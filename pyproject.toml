@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-energy-mfu-profiler"
+version = "0.1.0"
+description = "IEEE P1959/P1960-aligned NVML Energy (Joules/token), Roofline MFU (%), and Hybrid MBU (%) Profiler for vLLM and PyTorch (Transformer, Mamba/SSM, and Falcon-H1 Parallel Hybrid models)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [
+  {name = "Harith Sami"}
+]
+keywords = ["vllm", "falcon-h1", "mamba", "ssm", "energy-efficiency", "roofline", "mfu", "mbu", "quantization", "nvml"]
+dependencies = [
+  "nvidia-ml-py>=12.560.30",
+]
+
+[project.optional-dependencies]
+benchmark = [
+  "modal>=0.73.0",
+  "matplotlib>=3.8.0",
+  "huggingface_hub>=0.27.0,<1.0.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["vllm_energy_mfu_profiler", "plot_results", "modal_benchmark", "modal_vllm_benchmark", "run_modal_cli"]

@@ -1,0 +1,29 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets & Local Config
+.env
+*.pem
+
+# Personal Outreach & Agent Configs (Internal)
+.agents/
+outreach/
+tii plan.md
+tii_ml_plan.md
