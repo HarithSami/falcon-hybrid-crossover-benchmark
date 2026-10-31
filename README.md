@@ -3,7 +3,13 @@
 [![Hardware: NVIDIA L4 24GB](https://img.shields.io/badge/GPU-NVIDIA%20L4%2024GB-76B900?logo=nvidia)](https://modal.com)
 [![Models: TII Falcon 7B Triad](https://img.shields.io/badge/Models-Falcon3%20%7C%20Mamba%20%7C%20Falcon--H1-blue)](https://huggingface.co/tiiuae)
 [![Telemetry: IEEE P1959/P1960 Aligned](https://img.shields.io/badge/Telemetry-Joules%2FToken%20%26%20Roofline%20MBU-orange)](#4-open-source-vllm-energy--roofline-mfumbu-profiler)
+[![Author: Harith Ibrahim](https://img.shields.io/badge/Author-Harith%20Ibrahim-blue.svg)](https://orcid.org/0009-0008-2204-7324)
+[![ORCID: 0009-0008-2204-7324](https://img.shields.io/badge/ORCID-0009--0008--2204--7324-green.svg)](https://orcid.org/0009-0008-2204-7324)
+[![Google Scholar](https://img.shields.io/badge/Scholar-Harith%20Ibrahim-4285F4.svg?logo=google-scholar&logoColor=white)](https://scholar.google.co.uk/citations?user=D0ZI6BoAAAAJ)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+
+**Author:** **Harith Ibrahim** (Machine Learning Systems Researcher, Dubai, UAE; Member & Contributor to IEEE P1959/P1960 Standards Working Groups)  
+**Academic Profiles:** [ORCID: `0009-0008-2204-7324`](https://orcid.org/0009-0008-2204-7324) • [Google Scholar Profile](https://scholar.google.co.uk/citations?user=D0ZI6BoAAAAJ) • [GitHub Profile (@HarithSami)](https://github.com/HarithSami)
 
 An empirical hardware-efficiency, post-training quantization, and serving-engine study across the **Technology Innovation Institute's (TII) 7B architectural triad**:
 1. **Pure Transformer (GQA):** [`tiiuae/Falcon3-7B-Instruct`](https://huggingface.co/tiiuae/Falcon3-7B-Instruct) (`28` layers)
@@ -189,9 +195,9 @@ python src/plot_results.py results/benchmark_vllm_mfu.json
 ## Citation
 
 ```bibtex
-@techreport{sami2026falcon7bcrossover,
+@techreport{ibrahim2026falcon7bcrossover,
   title       = {Hardware, Energy, and Quantization Crossover in Parallel Hybrid State-Space Models: An Empirical Study on the Falcon 7B Triad},
-  author      = {Sami, Harith},
+  author      = {Ibrahim, Harith},
   year        = {2026},
   institution = {Independent Research (IEEE P1959/P1960 Working Group Contributor)},
   note        = {Empirical evaluation of Falcon3-7B, Falcon3-Mamba-7B, and Falcon-H1-7B on NVIDIA L4 GPUs}

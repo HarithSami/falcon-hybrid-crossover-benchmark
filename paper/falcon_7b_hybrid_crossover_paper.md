@@ -1,8 +1,9 @@
 # Hardware, Energy, and Quantization Crossover in Parallel Hybrid State-Space Models: An Empirical Study on the Falcon 7B Triad
 
-**Harith Sami**  
+**Harith Ibrahim**  
 *Independent Researcher · Contributor, IEEE P1959/P1960 ML Energy-Efficiency Working Groups · Ex-Nokia Bell Labs*  
-Dubai, United Arab Emirates
+Dubai, United Arab Emirates  
+[ORCID: 0009-0008-2204-7324](https://orcid.org/0009-0008-2204-7324) · [Google Scholar](https://scholar.google.co.uk/citations?user=D0ZI6BoAAAAJ)
 
 ---
 
