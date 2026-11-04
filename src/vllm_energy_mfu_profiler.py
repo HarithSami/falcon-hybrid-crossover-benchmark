@@ -1,23 +1,26 @@
 """
 vLLM & Hugging Face Energy, Roofline MFU, and Hybrid MBU Telemetry Profiler
 ===========================================================================
-Open-source hardware telemetry instrumentation aligned with IEEE P1959/P1960
-energy-efficiency principles. Designed for evaluating Pure Transformers,
-Pure State-Space Models (Mamba / Mamba-2), and Parallel Hybrid architectures
-(such as TII's Falcon-H1 series) under vLLM (CUDA Graphs / PagedAttention)
-and Hugging Face Transformers.
+Open-source hardware telemetry instrumentation informed by IEEE P1959/P1960
+working-group energy-efficiency methodologies. Designed for evaluating Pure
+Transformers, Pure State-Space Models (Mamba / Mamba-2), and Parallel Hybrid
+architectures (such as TII's Falcon-H1 series) under vLLM (CUDA Graphs /
+PagedAttention) and Hugging Face Transformers.
 
 Key Capabilities:
   1. Hardware NVML Energy Accumulator (`nvmlDeviceGetTotalEnergyConsumption`)
-     paired with high-frequency 20ms background power polling.
+     paired with high-frequency 50 Hz (20ms) background power polling and raw
+     time-series trace export.
   2. Idle Power Floor Calibration (`P_idle`) to separate:
        - Total Datacenter Energy per Token (`joules_per_token_total`)
        - Dynamic Marginal Switching Energy per Token (`joules_per_token_dynamic`)
   3. Roofline Model FLOPs Utilization (MFU %) & Model Bandwidth Utilization (MBU %)
      accounting for both dynamic Transformer KV-cache reads and fixed O(1)
-     Mamba SSM recurrent state updates during autoregressive decoding.
+     Mamba SSM recurrent state updates during autoregressive decoding across
+     GDDR6 (NVIDIA L4/A10G/T4) and HBM2e/HBM3 (A100/H100) memory subsystems.
 
 Author: Harith Ibrahim
+ORCID: https://orcid.org/0009-0008-2204-7324
 License: Apache-2.0
 """
 
@@ -30,23 +33,28 @@ from typing import Any
 
 
 # ---------------------------------------------------------------------------
-# 1. Datacenter GPU Hardware Specifications (BF16 Tensor Core Peak & HBM BW)
+# 1. Datacenter GPU Hardware Specifications (BF16 Tensor Core Peak & Memory BW)
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class GPUSpec:
     name: str
+    memory_type: str  # e.g., "GDDR6", "HBM2e", "HBM3"
     peak_bf16_tflops: float  # Dense BF16/FP16 Tensor Core TFLOP/s
-    peak_hbm_bw_gbps: float  # Peak memory bandwidth in GB/s (10^9 bytes/s)
+    peak_mem_bw_gbps: float  # Peak off-chip memory bandwidth in GB/s (10^9 bytes/s)
     tdp_watts: float
+
+    @property
+    def peak_hbm_bw_gbps(self) -> float:
+        return self.peak_mem_bw_gbps
 
 
 KNOWN_GPU_SPECS: dict[str, GPUSpec] = {
-    "L4": GPUSpec("NVIDIA L4", peak_bf16_tflops=121.0, peak_hbm_bw_gbps=300.0, tdp_watts=72.0),
-    "A10G": GPUSpec("NVIDIA A10G", peak_bf16_tflops=125.0, peak_hbm_bw_gbps=600.0, tdp_watts=300.0),
-    "A100-SXM4-40GB": GPUSpec("NVIDIA A100 40GB", peak_bf16_tflops=312.0, peak_hbm_bw_gbps=1555.0, tdp_watts=400.0),
-    "A100-SXM4-80GB": GPUSpec("NVIDIA A100 80GB", peak_bf16_tflops=312.0, peak_hbm_bw_gbps=2039.0, tdp_watts=400.0),
-    "H100": GPUSpec("NVIDIA H100 SXM5", peak_bf16_tflops=989.0, peak_hbm_bw_gbps=3350.0, tdp_watts=700.0),
-    "T4": GPUSpec("Tesla T4", peak_bf16_tflops=65.0, peak_hbm_bw_gbps=320.0, tdp_watts=70.0),
+    "L4": GPUSpec("NVIDIA L4", memory_type="GDDR6", peak_bf16_tflops=121.0, peak_mem_bw_gbps=300.0, tdp_watts=72.0),
+    "A10G": GPUSpec("NVIDIA A10G", memory_type="GDDR6", peak_bf16_tflops=125.0, peak_mem_bw_gbps=600.0, tdp_watts=300.0),
+    "A100-SXM4-40GB": GPUSpec("NVIDIA A100 40GB", memory_type="HBM2e", peak_bf16_tflops=312.0, peak_mem_bw_gbps=1555.0, tdp_watts=400.0),
+    "A100-SXM4-80GB": GPUSpec("NVIDIA A100 80GB", memory_type="HBM2e", peak_bf16_tflops=312.0, peak_mem_bw_gbps=2039.0, tdp_watts=400.0),
+    "H100": GPUSpec("NVIDIA H100 SXM5", memory_type="HBM3", peak_bf16_tflops=989.0, peak_mem_bw_gbps=3350.0, tdp_watts=700.0),
+    "T4": GPUSpec("Tesla T4", memory_type="GDDR6", peak_bf16_tflops=65.0, peak_mem_bw_gbps=320.0, tdp_watts=70.0),
 }
 
 
@@ -55,12 +63,11 @@ def resolve_gpu_spec(gpu_name: str) -> GPUSpec:
     for key, spec in KNOWN_GPU_SPECS.items():
         if key.lower() in gpu_name.lower():
             return spec
-    # Conservative fallback (L4-class)
-    return GPUSpec(gpu_name, peak_bf16_tflops=121.0, peak_hbm_bw_gbps=300.0, tdp_watts=72.0)
+    return GPUSpec(gpu_name, memory_type="GDDR6", peak_bf16_tflops=121.0, peak_mem_bw_gbps=300.0, tdp_watts=72.0)
 
 
 # ---------------------------------------------------------------------------
-# 2. Architecture Parameter & KV/SSM State Calculator
+# 2. Architecture Parameter & Analytical KV/SSM State Calculator
 # ---------------------------------------------------------------------------
 @dataclass
 class ArchitectureProfile:
@@ -71,7 +78,16 @@ class ArchitectureProfile:
     num_layers: int
     num_kv_heads: int
     head_dim: int
-    ssm_state_bytes: int  # Fixed recurrent state footprint in bytes
+    ssm_state_bytes: int  # Fixed O(1) recurrent state footprint in bytes
+
+    def analytical_kv_cache_bytes(self, seq_len: int, batch_size: int = 1, kv_dtype_bytes: int = 2) -> int:
+        """Exact analytical KV cache footprint in bytes at sequence length `seq_len`."""
+        return 2 * self.num_layers * self.num_kv_heads * self.head_dim * seq_len * kv_dtype_bytes * batch_size
+
+    def analytical_persistent_state_mb(self, seq_len: int, batch_size: int = 1) -> float:
+        """Total persistent state (KV cache + recurrent SSM state) in MiB."""
+        total_b = self.analytical_kv_cache_bytes(seq_len, batch_size) + (self.ssm_state_bytes * batch_size)
+        return total_b / (1024**2)
 
 
 def build_architecture_profile(
@@ -99,13 +115,17 @@ def build_architecture_profile(
         num_kv_heads = 0
         ssm_d_state = int(getattr(hf_config, "state_size", getattr(hf_config, "ssm_state_size", 16)))
         ssm_expand = int(getattr(hf_config, "expand", 2))
-        ssm_state_bytes = num_layers * hidden_size * ssm_expand * ssm_d_state * 2
+        conv_kernel = int(getattr(hf_config, "conv_kernel", 4))
+        d_inner = hidden_size * ssm_expand
+        # Conv1d state (bf16) + SSM recurrent state (fp32/bf16)
+        ssm_state_bytes = num_layers * d_inner * (conv_kernel + ssm_d_state) * 2
     elif "h1" in model_type or "hybrid" in model_type:
         arch_type = "hybrid"
         ssm_d_state = int(getattr(hf_config, "mamba_d_state", 128))
         ssm_n_heads = int(getattr(hf_config, "mamba_n_heads", 64))
         ssm_d_head = int(getattr(hf_config, "mamba_d_head", 64))
-        ssm_state_bytes = num_layers * ssm_n_heads * ssm_d_head * ssm_d_state * 2
+        conv_kernel = int(getattr(hf_config, "mamba_d_conv", 4))
+        ssm_state_bytes = num_layers * ssm_n_heads * ssm_d_head * (conv_kernel + ssm_d_state) * 2
     else:
         arch_type = "transformer"
         ssm_state_bytes = 0
@@ -131,6 +151,7 @@ class TelemetryReport:
     engine: str
     precision: str
     gpu_name: str
+    memory_type: str
     context_length: int
     decode_tokens: int
     batch_size: int
@@ -145,7 +166,8 @@ class TelemetryReport:
     joules_per_token_dynamic: float
     achieved_tflops: float
     mfu_pct: float
-    achieved_hbm_bw_gbps: float
+    achieved_mem_bw_gbps: float
+    achieved_hbm_bw_gbps: float  # Backward-compatible alias
     mbu_pct: float
     arithmetic_intensity_flops_per_byte: float
 
@@ -167,10 +189,16 @@ class VLLMEnergyMFUProfiler:
         self.handle = self.pynvml.nvmlDeviceGetHandleByIndex(device_index)
         raw_name = self.pynvml.nvmlDeviceGetName(self.handle)
         self.gpu_name = raw_name.decode("utf-8") if isinstance(raw_name, bytes) else str(raw_name)
+        try:
+            drv = self.pynvml.nvmlSystemGetDriverVersion()
+            self.driver_version = drv.decode("utf-8") if isinstance(drv, bytes) else str(drv)
+        except Exception:
+            self.driver_version = "unknown"
         self.gpu_spec = resolve_gpu_spec(self.gpu_name)
         self.poll_interval_s = poll_interval_s
 
         self._samples_watts: list[float] = []
+        self._samples_rel_time_s: list[float] = []
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._e_start_mj: int | None = None
@@ -191,13 +219,16 @@ class VLLMEnergyMFUProfiler:
         while not self._stop_event.is_set():
             try:
                 mw = self.pynvml.nvmlDeviceGetPowerUsage(self.handle)
-                self._samples_watts.append(mw / 1000.0)
+                now_rel = time.perf_counter() - self._t_start
+                self._samples_watts.append(round(mw / 1000.0, 2))
+                self._samples_rel_time_s.append(round(now_rel, 4))
             except Exception:
                 pass
             time.sleep(self.poll_interval_s)
 
     def start(self) -> None:
         self._samples_watts.clear()
+        self._samples_rel_time_s.clear()
         self._stop_event.clear()
         self._t_start = time.perf_counter()
         try:
@@ -207,7 +238,7 @@ class VLLMEnergyMFUProfiler:
         self._thread = threading.Thread(target=self._poll_loop, daemon=True)
         self._thread.start()
 
-    def stop_raw(self) -> dict[str, float]:
+    def stop_raw(self) -> dict[str, Any]:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=1.0)
@@ -235,11 +266,14 @@ class VLLMEnergyMFUProfiler:
             "mean_watts": mean_w,
             "peak_watts": peak_w,
             "total_joules": total_joules,
+            "poll_interval_s": self.poll_interval_s,
+            "samples_watts": list(self._samples_watts),
+            "samples_rel_time_s": list(self._samples_rel_time_s),
         }
 
     def compute_report(
         self,
-        raw_stats: dict[str, float],
+        raw_stats: dict[str, Any],
         arch: ArchitectureProfile,
         weights_vram_bytes: int,
         engine: str,
@@ -249,8 +283,9 @@ class VLLMEnergyMFUProfiler:
         batch_size: int = 1,
     ) -> TelemetryReport:
         """
-        Computes IEEE P1959/P1960 energy metrics alongside Roofline MFU (%) and
-        Hybrid MBU (%) for a completed generation window.
+        Computes NVML energy metrics alongside Roofline MFU (%) and
+        Hybrid MBU (%) for a completed generation window using analytical
+        KV-cache + SSM recurrent state byte traffic.
         """
         duration_s = raw_stats["duration_s"]
         total_generated_tokens = max(decode_tokens * batch_size, 1)
@@ -265,27 +300,24 @@ class VLLMEnergyMFUProfiler:
         j_tok_dyn = dynamic_joules / total_generated_tokens
 
         # --- Roofline FLOPs per token & MFU (%) ---
-        # Forward pass FLOPs per token ≈ 2 * N_params + attention context FLOPs (4 * L * H_kv * d_k * seq_len)
         avg_seq_len = context_length + (decode_tokens // 2)
         attn_flops_per_tok = 4.0 * arch.num_layers * arch.num_kv_heads * arch.head_dim * avg_seq_len
         flops_per_tok = (2.0 * arch.num_params) + attn_flops_per_tok
         achieved_tflops = (flops_per_tok * tps) / 1e12
         mfu_pct = (achieved_tflops / self.gpu_spec.peak_bf16_tflops) * 100.0
 
-        # --- Roofline Memory Bytes Transferred per Step & MBU (%) ---
-        # At each decode step, the GPU streams:
+        # --- Analytical Roofline Memory Bytes Transferred per Step & MBU (%) ---
+        # At each decode step, the GPU streams from off-chip memory (GDDR6/HBM):
         #   1. Static model weights (weights_vram_bytes)
         #   2. Active KV cache (2 * L * H_kv * d_k * avg_seq_len * 2 bytes * batch_size)
         #   3. Recurrent Mamba SSM state read+write (2 * ssm_state_bytes * batch_size)
-        kv_bytes_per_step = (
-            2 * arch.num_layers * arch.num_kv_heads * arch.head_dim * avg_seq_len * 2 * batch_size
-        )
+        kv_bytes_per_step = arch.analytical_kv_cache_bytes(avg_seq_len, batch_size=batch_size)
         ssm_bytes_per_step = 2 * arch.ssm_state_bytes * batch_size
         total_bytes_per_step = weights_vram_bytes + kv_bytes_per_step + ssm_bytes_per_step
 
         steps_per_s = max(decode_tokens / duration_s, 1e-6)
-        achieved_hbm_bw_gbps = (total_bytes_per_step * steps_per_s) / 1e9
-        mbu_pct = (achieved_hbm_bw_gbps / self.gpu_spec.peak_hbm_bw_gbps) * 100.0
+        achieved_mem_bw_gbps = (total_bytes_per_step * steps_per_s) / 1e9
+        mbu_pct = (achieved_mem_bw_gbps / self.gpu_spec.peak_mem_bw_gbps) * 100.0
 
         arith_intensity = (flops_per_tok * batch_size) / max(total_bytes_per_step, 1)
 
@@ -294,6 +326,7 @@ class VLLMEnergyMFUProfiler:
             engine=engine,
             precision=precision,
             gpu_name=self.gpu_name,
+            memory_type=self.gpu_spec.memory_type,
             context_length=context_length,
             decode_tokens=decode_tokens,
             batch_size=batch_size,
@@ -308,7 +341,8 @@ class VLLMEnergyMFUProfiler:
             joules_per_token_dynamic=round(j_tok_dyn, 4),
             achieved_tflops=round(achieved_tflops, 2),
             mfu_pct=round(mfu_pct, 2),
-            achieved_hbm_bw_gbps=round(achieved_hbm_bw_gbps, 2),
+            achieved_mem_bw_gbps=round(achieved_mem_bw_gbps, 2),
+            achieved_hbm_bw_gbps=round(achieved_mem_bw_gbps, 2),
             mbu_pct=round(mbu_pct, 2),
             arithmetic_intensity_flops_per_byte=round(arith_intensity, 2),
         )

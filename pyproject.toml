@@ -26,4 +26,4 @@ benchmark = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-py-modules = ["vllm_energy_mfu_profiler", "plot_results", "modal_benchmark", "modal_vllm_benchmark", "run_modal_cli"]
+py-modules = ["vllm_energy_mfu_profiler", "plot_results", "modal_benchmark", "modal_vllm_benchmark", "run_modal_cli", "recompute_hf_roofline"]

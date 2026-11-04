@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this benchmark suite, profiler, or dataset, please cite it as below."
+title: "Hardware, Energy, and Quantization Crossover in Parallel Hybrid State-Space Models: An Empirical Study on the Falcon 7B Triad"
+authors:
+  - family-names: Ibrahim
+    given-names: Harith
+    orcid: "https://orcid.org/0009-0008-2204-7324"
+repository-code: "https://github.com/HarithSami/falcon-hybrid-crossover-benchmark"
+license: Apache-2.0
+date-released: "2026-11-01"
+keywords:
+  - large-language-models
+  - state-space-models
+  - mamba
+  - hybrid-architecture
+  - falcon3
+  - falcon-h1
+  - vllm
+  - energy-efficiency
+  - nvml
+  - roofline
+  - quantization

@@ -2,6 +2,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{xcolor}
@@ -13,7 +14,18 @@
     colorlinks=true,
     linkcolor=blue!70!black,
     citecolor=blue!70!black,
-    urlcolor=blue!70!black
+    urlcolor=blue!70!black,
+    pdftitle={Hardware, Energy, and Quantization Crossover in Parallel Hybrid State-Space Models: An Empirical Study on the Falcon 7B Triad},
+    pdfauthor={Harith Ibrahim},
+    pdfsubject={Benchmarking and Systems Evaluation of Hybrid State-Space and Transformer Architectures}
+}
+
+\newcommand{\includeresultfigure}[2][width=\textwidth]{%
+  \IfFileExists{../results/plots/#2}{%
+    \includegraphics[#1]{../results/plots/#2}%
+  }{%
+    \includegraphics[#1]{#2}%
+  }%
 }
 
 \title{\textbf{Hardware, Energy, and Quantization Crossover in Parallel Hybrid State-Space Models: An Empirical Study on the Falcon 7B Triad}}
@@ -25,212 +37,371 @@
   \small ORCID: \href{https://orcid.org/0009-0008-2204-7324}{0009-0008-2204-7324} $\cdot$
   Google Scholar: \href{https://scholar.google.co.uk/citations?user=D0ZI6BoAAAAJ}{Harith Ibrahim}
 }
-\date{October 2026}
+\date{November 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-State-Space Models (SSMs) and hybrid Mamba-Attention architectures have emerged as compelling alternatives to pure Transformers for long-context inference, promising linear time complexity and constant-memory recurrent state updates. However, practical deployment decisions require empirical answers to three systems questions at controlled parameter scales: (1) At what exact sequence length does a parallel hybrid architecture overtake a Grouped-Query Attention (GQA) Transformer in total GPU memory, decode throughput, and energy per token? (2) How does low-bit weight quantization affect recurrent state stability in pure SSMs versus parallel hybrids? (3) How much of the perceived latency gap between eager PyTorch SSM execution and Transformers is an artifact of sequential kernel-launch overhead rather than hardware memory bandwidth limits?
-
-We conduct a controlled hardware, quantization, and serving-engine evaluation across the Technology Innovation Institute's (TII) 7B architectural triad---\texttt{Falcon3-7B-Instruct} (GQA Transformer), \texttt{Falcon3-Mamba-7B-Instruct} (Mamba-1 SSM), and \texttt{Falcon-H1-7B-Instruct} (parallel Mamba-2 + Attention hybrid)---on isolated NVIDIA L4 (24\,GB) datacenter GPUs using 50\,Hz NVML power integration aligned with IEEE P1959/P1960 telemetry practices. First, we map the exact \texttt{bf16} Peak VRAM crossover between \texttt{Falcon-H1-7B} and \texttt{Falcon3-7B} to $N=2{,}048$ tokens, showing that \texttt{Falcon-H1-7B}'s hybrid state grows \textbf{43.2\% slower} and saves \textbf{1.67\,GB of VRAM at 16K context} while avoiding the pure Transformer's \textbf{-27.2\% decode throughput decay} and \textbf{+36.7\% Joules/token penalty}. Second, we show that uniform 4-bit quantization (\texttt{int4\_uniform}) induces \textbf{4$\times$ higher perplexity drift} ($+2.25\%$ vs.\ $+0.57\%$) on pure Mamba and collapses zero-shot reasoning/Arabic accuracy from \textbf{80\% to 40\%}. Conversely, a branch-aware mixed-precision recipe (\texttt{int4\_mixed\_ssm}) on \texttt{Falcon-H1-7B} compresses static weights by \textbf{-53.5\%} ($14.48\,\text{GB} \to 6.74\,\text{GB}$), reduces perplexity drift by \textbf{33.3\%}, lowers logit $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ by \textbf{15.5\%}, accelerates prefill TTFT by \textbf{47.8\%}, and retains \textbf{100\%} task accuracy. Finally, using our open-source \texttt{vLLM} Energy \& Roofline MFU/MBU Profiler, we prove that \texttt{vLLM} CUDA Graphs elevate Model Bandwidth Utilization (MBU) on \texttt{Falcon-H1-7B} and \texttt{Falcon3-Mamba-7B} from $34.6\%\text{--}38.4\%$ (\texttt{hf\_eager}) to \textbf{$84.2\%\text{--}91.1\%$ ($252.6\text{--}273.3\,\text{GB/s}$)}, delivering a \textbf{$2.36\times\text{--}2.54\times$ decode speedup}, slashing energy per token by \textbf{-47.6\%}, and overtaking \texttt{Falcon3-7B} in both decode speed and energy efficiency at $N=8{,}192$.
+State-Space Models (SSMs) and hybrid Mamba-Attention architectures aim to eliminate the memory and bandwidth scaling bottlenecks of Transformer Key-Value (KV) caches in long-context autoregressive generation. However, empirical systems trade-offs across serving engines, low-bit quantization regimes, and context lengths remain poorly understood at controlled parameter scales. We present a controlled empirical evaluation across the Technology Innovation Institute's (TII) 7B architectural triad---\texttt{Falcon3-7B-Instruct} (Grouped-Query Attention Transformer), \texttt{Falcon3-Mamba-7B-Instruct} (pure Mamba-1 SSM), and \texttt{Falcon-H1-7B-Instruct} (parallel Mamba-2 + GQA hybrid)---on isolated NVIDIA L4 GPUs (24\,GB GDDR6) across sequence lengths from 512 to 16,384 tokens ($n=5$ trials). First, we show that in Hugging Face eager execution, \texttt{Falcon3-7B} is faster and more energy-efficient than both SSM-based models across all contexts up to 16K; however, this gap mostly reflects framework and sequential kernel-launch overhead rather than intrinsic hardware bounds. Under \texttt{vLLM} with CUDA graph capture, SSM decode throughput accelerates by $1.8\text{--}1.9\times$ and energy per token drops by $\sim 41\%$, whereas Transformer throughput increases by only $1.07\text{--}1.17\times$. Under \texttt{vLLM} at 8K context, \texttt{Falcon3-Mamba-7B} is the fastest and most energy-efficient model (17.27\,tok/s, 4.152\,J/tok), leading \texttt{Falcon3-7B} (16.55\,tok/s, 4.348\,J/tok) by 4.4\% in speed and 4.5\% in energy efficiency, while hybrid \texttt{Falcon-H1-7B} (16.15\,tok/s, 4.450\,J/tok) trails \texttt{Falcon3-7B} by about 2.4\%. In memory scaling, \texttt{Falcon-H1-7B} and \texttt{Falcon3-7B} reach peak VRAM near-parity around 2K tokens (14,902.9 vs.\ 14,900.5\,MB), saving 1,671\,MB of peak VRAM at 16K context where \texttt{Falcon3-7B} decode throughput drops 27.6\% due to expanding KV cache traffic. Second, our quantization evaluation uses continuous perplexity drift ($\Delta$PPL) and token-level logit Kullback-Leibler divergence (KL) alongside a 200-item templated probe. Because the probe contains only 5 unique questions each in the systems and Arabic domains across option rotations, its items are not independent, and probe accuracy serves strictly as a coarse functional check showing no catastrophic collapse across precisions. On \texttt{Falcon-H1-7B}, a branch-aware mixed-precision recipe (\texttt{int4\_mixed\_ssm}) compresses static weights by 53.4\% ($14.48 \to 6.74\,\text{GB}$) and yields a modest 15\% lower KL divergence than uniform INT4 ($0.094 \pm 0.006$ vs.\ $0.111 \pm 0.009$, roughly 1.5 combined standard errors), but runs slower-or-equal and less energy-efficiently at 8K context (8.16 vs.\ 7.30\,J/tok) and reaches 8,080\,MB peak VRAM, failing to fit into an 8\,GB device allocator. All benchmark telemetry, raw 50\,Hz power traces, and evaluation code are open-sourced.
 \end{abstract}
 
 \section{Introduction}
-Autoregressive language model inference comprises a compute-bound prefill phase (Time-To-First-Token, TTFT) and a memory-bandwidth-bound decode phase (Time-Per-Output-Token, TPOT). In Grouped-Query Attention (GQA) Transformers, the Key-Value (KV) cache scales linearly with sequence length $N$:
+Autoregressive inference in large language models comprises two distinct execution phases: a compute-bound prefill phase that processes the prompt context (measured by Time-To-First-Token, TTFT), and a memory-bandwidth-bound decode phase that generates output tokens sequentially (measured by Time-Per-Output-Token, TPOT). In standard Grouped-Query Attention (GQA) Transformers, every generated token attends to the entire prefix history. Consequently, the Key-Value (KV) cache grows linearly with context length $N$:
 \begin{equation}
-\mathrm{VRAM}_{\mathrm{KV}}(N) = 2 \cdot L \cdot H_{kv} \cdot d_k \cdot N \cdot b_{\mathrm{bytes}}
+\mathrm{VRAM}_{\mathrm{KV}}(N) = 2 \cdot L \cdot H_{\mathrm{kv}} \cdot d_k \cdot N \cdot b_{\mathrm{bytes}}
 \end{equation}
-Conversely, Selective State-Space Models (Mamba-1/2) maintain a fixed-size recurrent state $h_t = \bar{A}_t h_{t-1} + \bar{B}_t x_t$ with $O(1)$ memory and bandwidth cost per decode token, but face challenges in exact token copying and low-bit quantization sensitivity. {\sloppy TII's 7B triad---\texttt{Falcon3-7B-Instruct} (28-layer GQA Transformer), \texttt{Falcon3-Mamba-7B-Instruct} (64-layer Mamba-1), and \texttt{Falcon-H1-7B-Instruct} (44-layer parallel Mamba-2 + Attention hybrid)---provides an ideal controlled testbed to evaluate these systems trade-offs.\par}
+where $L$ denotes layer depth, $H_{\mathrm{kv}}$ the number of key-value heads, $d_k$ head dimension, and $b_{\mathrm{bytes}}$ the data type byte width. At long sequence lengths, fetching this expanding cache from device dynamic random-access memory (DRAM) consumes significant memory bandwidth and energy on every decoding step.
 
-\section{Methodology and Roofline Telemetry Formulation}
-All benchmarks were executed on isolated serverless NVIDIA L4 GPUs (24\,GB GDDR6, $300.0\,\text{GB/s}$ peak HBM bandwidth, $121.0\,\text{TFLOPS}$ BF16, $72.0\,\text{W}$ TDP) using a 50\,Hz NVML background thread (\texttt{pynvml}). Prior to model loading, we calibrate the clean P8/P0 idle power floor $P_{\mathrm{idle}}$ ($16.16\text{--}18.53\,\text{W}$). Total and dynamic energy per generated token over $M$ decode tokens are computed via:
+Selective State-Space Models (SSMs), notably Mamba-1 and Mamba-2, address this bottleneck by maintaining a fixed-size hidden recurrent state $h_t \in \mathbb{R}^{d_{\mathrm{state}}}$:
 \begin{equation}
-e_{\mathrm{total}} = \frac{\sum_i P(t_i)\,\Delta t_i}{M}, \qquad e_{\mathrm{dynamic}} = \frac{\sum_i \max(0, P(t_i) - P_{\mathrm{idle}})\,\Delta t_i}{M}
+h_t = \bar{A}_t h_{t-1} + \bar{B}_t x_t, \qquad y_t = C_t h_t + D x_t
 \end{equation}
-Because single-stream decode ($B=1$) has an arithmetic intensity of $\approx 1\,\text{FLOP/byte}$, we define Hybrid Model Bandwidth Utilization ($\mathrm{MBU}\%$) alongside Model FLOPs Utilization ($\mathrm{MFU}\%$):
+yielding $O(1)$ memory footprint and constant memory access per decoded token regardless of sequence length. However, pure SSMs face known expressivity limitations in associative recall and exact token-copying tasks. To balance these complementary properties, hybrid architectures intertwine recurrent SSM blocks with self-attention layers, either sequentially or in parallel.
+
+Evaluating the practical deployment value of these architectures requires empirical investigation at controlled parameter scales across three systems dimensions:
+\begin{enumerate}
+    \item \textbf{Hardware \& Energy Scaling:} At what sequence length does a parallel hybrid architecture exhibit lower memory footprint, decode latency, or energy consumption compared to a pure Transformer under standard execution?
+    \item \textbf{Serving Engine \& Kernel Launch Effects:} How much of the observed execution performance gap between eager PyTorch execution and compiled execution stems from sequential kernel launch overhead rather than underlying hardware bandwidth saturation?
+    \item \textbf{Low-Bit Quantization Stability:} Does post-training low-bit weight quantization degrade recurrent state projections more severely than feedforward projections, and can branch-aware mixed precision mitigate distribution drift without imposing memory or latency penalties?
+\end{enumerate}
+
+To answer these questions, we perform a controlled systems benchmarking study on the 7B architectural triad released by the Technology Innovation Institute (TII):
+\begin{itemize}
+    \item \texttt{Falcon3-7B-Instruct}: A 28-layer GQA Transformer ($H_q=32$, $H_{\mathrm{kv}}=8$, $d=4096$).
+    \item \texttt{Falcon3-Mamba-7B-Instruct}: A 64-layer pure Mamba-1 selective state-space model.
+    \item \texttt{Falcon-H1-7B-Instruct}: A 44-layer parallel hybrid model combining Mamba-2 recurrent blocks and GQA attention blocks in each layer.
+\end{itemize}
+All evaluations were executed on isolated NVIDIA L4 datacenter GPUs (24\,GB GDDR6, 300\,GB/s peak bandwidth) with 50\,Hz board-level power sampling informed by IEEE P1959/P1960 working-group discussions.
+
+\section{Related Work}
+\textbf{State-Space Models and Structured State Spaces.}
+Linear time-invariant state-space models emerged as alternatives to Transformers for continuous-time sequence modeling. Gu and Dao introduced Mamba~\cite{gu_mamba_2024}, incorporating input-dependent selection mechanisms ($\Delta_t, B_t, C_t$) and a hardware-aware fused selective-scan kernel that computes recurrent updates in GPU SRAM. Dao and Gu subsequently developed Mamba-2~\cite{dao_mamba2_2024}, establishing a theoretical bridge between structured state spaces and linear attention (Structured State Space Duality, SSD). Mamba-2 processes sequence blocks as structured semi-separable matrix multiplications, enabling tensor-core GEMM utilization during prefill.
+
+\textbf{Pure and Hybrid Foundation Models.}
+The Technology Innovation Institute developed \texttt{Falcon-Mamba-7B}~\cite{tii_falconmamba_2024}, validating pure selective state-space models at foundation scale. To overcome the known memory-retrieval limits of pure SSMs on long-context needle-in-a-haystack tasks, TII introduced \texttt{Falcon-H1}~\cite{tii_falconh1_2025}, a family of parallel hybrid architectures pairing Mamba-2 recurrence with Grouped-Query Attention in each layer alongside SwiGLU feedforward blocks, and \texttt{Falcon3}~\cite{tii_falcon3_2024}, a suite of dense Transformers and Mamba architectures.
+
+\textbf{High-Throughput Serving \& Graph Execution.}
+Modern large language model serving frameworks such as \texttt{vLLM}~\cite{kwon_vllm_2023} optimize memory allocation using PagedAttention to eliminate KV cache fragmentation. To mitigate host-side CPU dispatch overhead in autoregressive generation, serving runtimes capture CUDA graphs during decode, recording a sequence of kernel launches into an executable graph. While widely studied for standard Transformers, the interaction between CUDA graphs and deep recurrent state-space networks (which feature 44--64 sequential layers) has remained largely unquantified in empirical literature.
+
+\textbf{Low-Bit Weight Quantization.}
+Quantization techniques compress model parameters from 16-bit representations (FP16/BF16) into 4-bit integers or floating-point encodings. Dettmers et al. introduced NormalFloat4 (NF4) in QLoRA~\cite{dettmers_qlora_2023}, an information-theoretically optimal quantile quantization scheme for normally distributed weights. While post-training quantization is well-characterized for Transformers, recurrent architectures have raised concerns regarding error accumulation across autoregressive steps.
+
+\textbf{Roofline Modeling \& Bandwidth Utilization in LLM Inference.}
+Williams et al. formulated the Roofline model~\cite{williams_roofline_2009} to characterize computational workloads by comparing operational intensity (FLOPs per byte transferred from DRAM) against hardware compute and bandwidth ceilings. In single-stream autoregressive decode ($B=1$), operational intensity is $\approx 1\,\text{FLOP/byte}$. Recent systems benchmarking literature evaluates Model Bandwidth Utilization (MBU), measuring the fraction of peak memory bandwidth achieved during weight and cache streaming.
+
+\section{Methodology and Systems Telemetry Formulation}
+
+\subsection{Hardware Environment and Idle Power Baseline}
+All experimental sweeps were conducted on isolated serverless NVIDIA L4 instances equipped with 24\,GB GDDR6 memory ($300.0\,\text{GB/s}$ peak bandwidth, $121.0\,\text{TFLOPS}$ dense BF16 tensor core throughput, and a $72.0\,\text{W}$ thermal design power). A high-resolution background telemetry thread sampled board-level power consumption at 50\,Hz via NVML (\texttt{pynvml}) alongside the onboard NVML cumulative energy counter. Telemetry practices were informed by ongoing IEEE P1959 and IEEE P1960 working-group discussions regarding machine learning systems efficiency and telemetry standards.
+
+Container start states exhibited variable pre-load idle power floors ranging from $13.5\,\text{W}$ to $35.4\,\text{W}$ across instances, while post-load resident idle power settled between $36.1\,\text{W}$ and $43.6\,\text{W}$. Because dynamic energy subtraction ($\max(0, P(t) - P_{\mathrm{idle}})$) is sensitive to container-specific idle baselines, we report \textbf{total Joules per token} ($e_{\mathrm{total}}$) as the primary, robust efficiency metric:
 \begin{equation}
-\mathrm{MBU}(\%) = \frac{\left(\mathrm{Bytes}_{\mathrm{weights}} + \mathrm{Bytes}_{\mathrm{KV}}(N) + \mathrm{Bytes}_{\mathrm{SSM}}\right) \times \mathrm{TPS}_{\mathrm{decode}}}{\mathrm{BW}_{\mathrm{peak}}} \times 100
+e_{\mathrm{total}} = \frac{\int_{t_{\mathrm{start}}}^{t_{\mathrm{end}}} P(t)\,dt}{M}
 \end{equation}
+where $M=127$ measured decode tokens (omitting the first token to isolate steady-state generation). Dynamic energy per token is tracked as a secondary internal reference.
+
+\subsection{Analytical Persistent State vs. Peak Prefill VRAM}
+To accurately differentiate architecture-level state requirements from framework memory allocation policies, we report two distinct memory metrics:
+\begin{enumerate}
+    \item \textbf{Analytical Persistent State ($\mathrm{MB}$):} The theoretical memory footprint required to maintain state during decoding. For GQA Transformers, this corresponds to the KV cache footprint $\mathrm{VRAM}_{\mathrm{KV}}(N)$. For pure Mamba-1 (\texttt{Falcon3-Mamba-7B}), it corresponds to the fixed convolutional and hidden state tensors across 64 layers ($20.0\,\text{MB}$). For hybrid \texttt{Falcon-H1-7B}, it represents the combined Mamba-2 state and reduced-head KV cache ($89\,\text{MB}$ at $N=512$, scaling to $771\,\text{MB}$ at $N=16{,}384$).
+    \item \textbf{Peak Prefill $\Delta$VRAM ($\mathrm{MB}$):} The empirical peak memory allocated during the prefill phase ($\texttt{torch.cuda.max\_memory\_allocated} - \text{weights}$), capturing transient scratchpad memory, activation buffers, and temporary tensor workspaces required by the PyTorch runtime.
+\end{enumerate}
+
+\subsection{Analytical Model Bandwidth Utilization (MBU)}
+Given the memory-bound nature of batch-1 autoregressive decoding, we define an analytical Model Bandwidth Utilization metric:
+\begin{equation}
+\mathrm{MBU}(\%) = \frac{\left(\mathrm{Bytes}_{\mathrm{weights}} + \mathrm{Bytes}_{\mathrm{KV}}(\bar{N}) + 2 \cdot \mathrm{Bytes}_{\mathrm{SSM}}\right) \times \mathrm{TPS}_{\mathrm{decode}}}{\mathrm{BW}_{\mathrm{peak}}} \times 100
+\end{equation}
+where $\mathrm{BW}_{\mathrm{peak}} = 300.0\,\text{GB/s}$ for NVIDIA L4 GDDR6. This formulation accounts for parameter weights, average sequence KV cache transfers, and bidirectional read-write access to recurrent state buffers. Because this metric omits transient activations, logit buffers, and memory controller overhead, it serves as a model-based analytical estimate rather than a hardware counter measurement. In parallel, Model FLOPs Utilization (MFU) is reported for completeness, remaining between 0.18\% and 0.22\% across all configurations due to low arithmetic intensity at $B=1$.
+
+\subsection{Quantization Evaluation Protocol}
+Quantization fidelity was assessed using both continuous distribution metrics and functional probing across three precision modes: full precision (\texttt{bf16}), uniform 4-bit NormalFloat (\texttt{int4\_uniform} via \texttt{bitsandbytes}), and branch-aware mixed precision (\texttt{int4\_mixed\_ssm}). In \texttt{int4\_mixed\_ssm}, linear layers within Mamba recurrent blocks are retained in BF16, while self-attention projections and feedforward SwiGLU MLPs are quantized to NF4.
+
+Fidelity evaluation comprises:
+\begin{enumerate}
+    \item \textbf{Continuous Language Modeling Fidelity:} Dense evaluation perplexity (PPL) and token-level logit Kullback-Leibler divergence $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ evaluated over a bilingual (English and Arabic) evaluation corpus spanning 769 to 1,223 scored tokens. Relative perplexity degradation is measured within-model:
+    \begin{equation}
+    \Delta\text{PPL}\% = \frac{\mathrm{PPL}_Q - \mathrm{PPL}_{\mathrm{bf16}}}{\mathrm{PPL}_{\mathrm{bf16}}} \times 100
+    \end{equation}
+    Standard errors are reported at the passage level ($n=6$) for $\Delta$PPL and at the token level for KL divergence.
+    \item \textbf{Templated Multiple-Choice Functional Probe:} A 200-item multiple-choice probe across four domains (50 questions each): arithmetic reasoning (50 synthetic linear equations), systems concepts (5 unique questions with 10 option permutations), Arabic linguistic and regional knowledge (5 unique questions with 10 option permutations), and key-value associative recall (50 synthetic pairs). Because the systems and Arabic domains contain only 5 unique underlying questions, test items are not independent. Probe accuracy is treated strictly as a coarse functional sanity check to detect model collapse rather than an independent benchmark.
+\end{enumerate}
 
 \section{Empirical Results}
 
-\subsection{7B 3-Architecture BF16 Crossover (\texorpdfstring{$N \in [512, 16384]$}{N in [512, 16384]})}
-Table~\ref{tab:crossover} summarizes the BF16 crossover sweep. While \texttt{Falcon-H1-7B} has slightly larger static weights ($14{,}477.3\,\text{MB}$ vs.\ $14{,}220.4\,\text{MB}$ for \texttt{Falcon3-7B}), its dynamic state grows \textbf{43.2\% slower} ($+2{,}527.6\,\text{MB}$ vs.\ $+4{,}453.4\,\text{MB}$ at $16\text{K}$), reaching exact Peak VRAM parity at $N=2{,}048$ and saving \textbf{$1.67\,\text{GB}$} at $N=16{,}384$. Meanwhile, \texttt{Falcon3-7B} suffers a \textbf{-27.2\%} throughput drop and \textbf{+36.7\%} energy increase from $512$ to $16\text{K}$, whereas \texttt{Falcon-H1-7B} and \texttt{Falcon3-Mamba-7B} maintain context-invariant decode speed ($<1.5\%$ variance).
+\subsection{Hugging Face Eager BF16 Crossover (\texorpdfstring{$N \in [512, 16384]$}{N in [512, 16384]})}
+Table~\ref{tab:crossover} and Figure~\ref{fig:crossover} summarize the BF16 crossover sweep conducted under standard Hugging Face eager execution across sequence lengths from 512 to 16,384 tokens ($n=5$ trials).
 
 \begin{table}[htbp]
 \centering
-\caption{7B 3-Architecture BF16 Crossover on Isolated NVIDIA L4 GPUs.}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\caption{Hugging Face eager BF16 crossover benchmark across sequence lengths ($N \in [512, 16384]$) on an isolated NVIDIA L4 GPU ($n=5$ trials, reported as mean $\pm$ std). Persistent state represents analytical KV and SSM recurrent dimensions; peak VRAM includes transient prefill allocation.}
 \label{tab:crossover}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lrrrrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-\textbf{Architecture} & \textbf{Ctx} & \textbf{TTFT (ms)} & \textbf{Decode (tok/s)} & \textbf{Peak VRAM (MB)} & \textbf{State Growth (MB)} & \textbf{Energy (J/tok)} & \textbf{Task Acc} \\
+\textbf{Model} & \textbf{Ctx ($N$)} & \textbf{TTFT (ms)} & \textbf{Decode (tok/s)} & \textbf{State (MB)} & \textbf{Peak VRAM (MB)} & \textbf{Total J/tok} \\
 \midrule
-Falcon3-7B (Transformer) & 512 & 144.5 & 16.2 & 14456.9 & +236.5 & 4.4199 & 80\% \\
-Falcon3-7B (Transformer) & 2048 & 531.9 & 15.7 & 14864.9 & +644.6 & 4.5352 & 80\% \\
-Falcon3-7B (Transformer) & 8192 & 2466.9 & 14.1 & 16497.3 & +2276.9 & 5.0723 & 80\% \\
-Falcon3-7B (Transformer) & 16384 & 5373.3 & 11.8 & 18673.7 & +4453.4 & 6.0419 & 80\% \\
+\multicolumn{7}{l}{\textit{Falcon3-7B (Pure Transformer, 28 layers, static weights 14,220.4\,MB)}} \\
+& 512 & 153.5 $\pm$ 7.0 & 16.43 $\pm$ 0.03 & 56 & 14,492.4 & 4.376 $\pm$ 0.034 \\
+& 2048 & 552.0 $\pm$ 6.2 & 15.91 $\pm$ 0.02 & 224 & 14,900.5 & 4.529 $\pm$ 0.011 \\
+& 4096 & 1247.5 $\pm$ 7.8 & 15.30 $\pm$ 0.01 & 448 & 15,444.6 & 4.714 $\pm$ 0.015 \\
+& 8192 & 2674.1 $\pm$ 23.1 & 14.19 $\pm$ 0.03 & 896 & 16,532.8 & 5.074 $\pm$ 0.012 \\
+& 16384 & 5695.5 $\pm$ 20.5 & 11.90 $\pm$ 0.04 & 1792 & 18,709.2 & 6.052 $\pm$ 0.027 \\
 \midrule
-Falcon3-Mamba-7B (SSM) & 512 & 252.9 & 7.0 & 14218.8 & +322.1 & 7.2381 & 80\% \\
-Falcon3-Mamba-7B (SSM) & 2048 & 800.0 & 6.8 & 14814.3 & +917.7 & 7.5640 & 80\% \\
-Falcon3-Mamba-7B (SSM) & 8192 & 3367.4 & 6.9 & 17196.6 & +3299.9 & 7.9367 & 80\% \\
-Falcon3-Mamba-7B (SSM) & 16384 & 6698.7 & 6.9 & 20372.9 & +6476.2 & 8.2630 & 80\% \\
+\multicolumn{7}{l}{\textit{Falcon3-Mamba-7B (Pure SSM, 64 layers, static weights 13,896.7\,MB)}} \\
+& 512 & 225.0 $\pm$ 5.2 & 9.38 $\pm$ 0.03 & 20 & 14,258.4 & 7.005 $\pm$ 0.110 \\
+& 2048 & 819.9 $\pm$ 8.6 & 9.45 $\pm$ 0.04 & 20 & 14,853.9 & 6.788 $\pm$ 0.084 \\
+& 4096 & 1779.7 $\pm$ 3.6 & 9.48 $\pm$ 0.02 & 20 & 15,648.0 & 7.075 $\pm$ 0.045 \\
+& 8192 & 3605.4 $\pm$ 56.5 & 9.51 $\pm$ 0.06 & 20 & 17,236.1 & 7.035 $\pm$ 0.063 \\
+& 16384 & 7089.0 $\pm$ 179.8 & 9.41 $\pm$ 0.08 & 20 & 20,412.4 & 7.045 $\pm$ 0.185 \\
 \midrule
-Falcon-H1-7B (Hybrid) & 512 & 407.3 & 7.0 & 14640.3 & \textbf{+163.1} & 7.4812 & \textbf{100\%} \\
-Falcon-H1-7B (Hybrid) & 2048 & 647.3 & 7.0 & \textbf{14869.2} & \textbf{+391.9} & 7.7721 & \textbf{100\%} \\
-Falcon-H1-7B (Hybrid) & 8192 & 3123.7 & 7.0 & \textbf{15784.4} & \textbf{+1307.2} & 8.3321 & \textbf{100\%} \\
-Falcon-H1-7B (Hybrid) & 16384 & 6609.2 & 6.9 & \textbf{17004.8} & \textbf{+2527.6} & 8.9602 & \textbf{100\%} \\
+\multicolumn{7}{l}{\textit{Falcon-H1-7B (Parallel Hybrid, 44 layers, static weights 14,477.3\,MB)}} \\
+& 512 & 258.2 $\pm$ 175.4 & 9.02 $\pm$ 0.05 & 89 & 14,674.1 & 7.044 $\pm$ 0.213 \\
+& 2048 & 680.4 $\pm$ 12.5 & 9.06 $\pm$ 0.08 & 155 & 14,902.9 & 7.489 $\pm$ 0.115 \\
+& 4096 & 1593.0 $\pm$ 101.3 & 9.11 $\pm$ 0.05 & 243 & 15,208.0 & 7.604 $\pm$ 0.053 \\
+& 8192 & 3259.3 $\pm$ 46.1 & 8.96 $\pm$ 0.03 & 419 & 15,818.1 & 7.676 $\pm$ 0.124 \\
+& 16384 & 6892.5 $\pm$ 73.0 & 9.03 $\pm$ 0.07 & 771 & 17,038.4 & 7.855 $\pm$ 0.138 \\
 \bottomrule
-\end{tabular}%
-}
+\end{tabular}
 \end{table}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{../results/plots/benchmark_crossover_charts.png}
-\caption{7B Architectural Triad BF16 Crossover Benchmarks across Context Lengths ($N \in [512, 16384]$) on Isolated NVIDIA L4 GPUs. Top row: Prefill TTFT (ms), Decode Throughput (tokens/s), and Peak VRAM Footprint (MB). Bottom row: Dynamic State Growth (MB), Total Energy per Token (J/tok), and Dynamic Energy per Token (J/tok). Hybrid \texttt{Falcon-H1-7B} reaches Peak VRAM parity with \texttt{Falcon3-7B} at $N=2{,}048$ tokens and achieves a $1.67\,\text{GB}$ memory reduction at $16\text{K}$ context while maintaining context-invariant decode speed ($<1.5\%$ variation).}
+\includeresultfigure{benchmark_crossover_charts.pdf}
+\caption{Hugging Face eager BF16 crossover benchmarks across sequence lengths ($N \in [512, 16384]$) on an isolated NVIDIA L4 GPU ($n=5$ trials, error bars denote $\pm$ std). (a) Decode throughput (tokens/s); (b) Analytical persistent state versus empirical peak prefill $\Delta$VRAM; (c) Total decode energy per generated token (J/tok); (d) Prefill Time-To-First-Token (TTFT in ms).}
 \label{fig:crossover}
 \end{figure}
 
-\subsection{Branch-Aware Quantization Ablation (\texttt{int4\_uniform} vs.\ \texttt{int4\_mixed\_ssm})}
-Table~\ref{tab:quant} demonstrates that uniform INT4 on \texttt{Falcon3-Mamba-7B} causes $+2.25\%$ PPL degradation and collapses zero-shot task accuracy from \textbf{80\% to 40\%}. Conversely, on \texttt{Falcon-H1-7B}, keeping \texttt{mamba} projections in BF16 while quantizing Attention and SwiGLU MLP blocks to INT4 (\texttt{int4\_mixed\_ssm}) reduces static weights by \textbf{-53.5\%} ($6{,}739.7\,\text{MB}$), cuts PPL drift by \textbf{33.3\%} ($+1.42\%$ vs.\ $+2.13\%$), lowers logit KL divergence by \textbf{15.5\%}, speeds up TTFT by \textbf{47.8\%}, and retains \textbf{100\%} accuracy.
+The empirical measurements demonstrate three key behaviors:
+\begin{itemize}
+    \item \textbf{Transformer Throughput and Energy Degradation:} As sequence length increases from 512 to 16,384 tokens, \texttt{Falcon3-7B} eager decode throughput drops by 27.6\% (from $16.43 \pm 0.03$ to $11.90 \pm 0.04\,\text{tok/s}$), while total decode energy per token rises by 38.3\% (from $4.376 \pm 0.034$ to $6.052 \pm 0.027\,\text{J/tok}$). In contrast, decode throughput for \texttt{Falcon3-Mamba-7B} ($9.38 \to 9.41\,\text{tok/s}$) and \texttt{Falcon-H1-7B} ($9.02 \to 9.03\,\text{tok/s}$) remains flat within $\approx 1\%$ across all contexts.
+    \item \textbf{Eager Execution Overhead Dominates:} In Hugging Face eager execution, \texttt{Falcon3-7B} achieves higher decode throughput and lower energy per token than both SSM-based architectures at every measured sequence length up to 16K. As analyzed in Section~\ref{sec:vllm_results}, this difference is an artifact of framework launch overhead rather than architectural bandwidth limitations.
+    \item \textbf{Memory Parity and Transient Allocations:} Static weight footprints are $14{,}220.4\,\text{MB}$ for \texttt{Falcon3-7B}, $13{,}896.7\,\text{MB}$ for \texttt{Falcon3-Mamba-7B}, and $14{,}477.3\,\text{MB}$ for \texttt{Falcon-H1-7B}. In analytical persistent state at 16K context, \texttt{Falcon3-7B} requires $1{,}792\,\text{MB}$, \texttt{Falcon-H1-7B} requires $771\,\text{MB}$ ($2.3\times$ less), and \texttt{Falcon3-Mamba-7B} requires only $20\,\text{MB}$. In peak prefill VRAM, \texttt{Falcon-H1-7B} and \texttt{Falcon3-7B} reach near-parity around 2K tokens ($14{,}902.9\,\text{MB}$ vs.\ $14{,}900.5\,\text{MB}$, a $2.4\,\text{MB}$ difference at that sweep point). At 16K context, \texttt{Falcon-H1-7B} saves $1{,}671\,\text{MB}$ of peak VRAM relative to \texttt{Falcon3-7B} ($17{,}038.4\,\text{MB}$ vs.\ $18{,}709.2\,\text{MB}$). Meanwhile, \texttt{Falcon3-Mamba-7B} exhibits peak $\Delta$VRAM growth of $\approx 6.5\,\text{GB}$ at 16K despite a constant $20\,\text{MB}$ persistent state, reflecting transient activation workspaces allocated during the PyTorch prefill pass.
+\end{itemize}
+
+\subsection{Quantization Ablation: Compression, Fidelity, and Serving Latency}
+Table~\ref{tab:quant} and Figure~\ref{fig:quant} summarize the quantization ablation across precisions.
 
 \begin{table}[htbp]
 \centering
-\caption{7B Quantization Fidelity, Memory, and Energy Ablation.}
+\footnotesize
+\setlength{\tabcolsep}{1.8pt}
+\caption{Weight quantization fidelity, memory footprint, and serving latency across the 7B triad ($n=5$ trials for latency and energy; quality metrics evaluated over bilingual corpus and 200-item probe). $\Delta$PPL standard error is passage-level ($n=6$); KL standard error is token-level. Probe accuracy is a coarse functional check.}
 \label{tab:quant}
-\resizebox{\textwidth}{!}{%
 \begin{tabular}{llrrrrrrr}
 \toprule
-\textbf{Architecture} & \textbf{Precision} & \textbf{Weights (MB)} & \textbf{Eval PPL ($\Delta\%$)} & \textbf{KL vs BF16} & \textbf{Top-1 Agree} & \textbf{Task Acc} & \textbf{TTFT@512} & \textbf{J/tok@8K} \\
+\textbf{Precision} & \textbf{Weights} & \textbf{$\Delta$PPL (\%)} & \textbf{KL vs BF16} & \textbf{Probe (\%)} & \textbf{Dec.@8K} & \textbf{J/tok@8K} & \textbf{VRAM@8K} \\
+& \textbf{(MB)} & \textbf{$\pm$ SE} & \textbf{$\pm$ SE} & \textbf{$\pm$ SE} & \textbf{(tok/s)} & & \textbf{(MB)} \\
 \midrule
-Falcon3-7B & \texttt{bf16} & 14220.4 & 17.53 (+0.00\%) & 0.0000 & 100.0\% & 80\% & 144.5\,ms & 5.0723 \\
-Falcon3-7B & \texttt{int4\_uniform} & 4808.4 & 17.63 (+0.57\%) & 0.1729 & 82.4\% & \textbf{80\%} & 232.3\,ms & \textbf{3.9659} \\
+\multicolumn{8}{l}{\textit{Falcon3-7B (Pure Transformer; TTFT@2K: 552.0\,ms unquantized vs.\ 634.1\,ms INT4)}} \\
+\texttt{bf16} & 14,220.4 & 0.0 & 0.000 & 70.0 $\pm$ 3.2 & 14.19 $\pm$ 0.03 & 5.074 $\pm$ 0.012 & 16,532.8 \\
+\texttt{int4\_uniform} & 4,808.4 & $-$3.31 $\pm$ 1.99 & 0.175 $\pm$ 0.020 & 64.0 $\pm$ 3.4 & 18.58 $\pm$ 0.09 & 3.851 $\pm$ 0.021 & 7,120.8 \\
 \midrule
-Falcon3-Mamba-7B & \texttt{bf16} & 13896.7 & 8.94 (+0.00\%) & 0.0000 & 100.0\% & 80\% & 252.9\,ms & 7.9367 \\
-Falcon3-Mamba-7B & \texttt{int4\_uniform} & 4359.0 & 9.14 (+2.25\%) & 0.0764 & 88.7\% & \textbf{40\%} & 359.7\,ms & 7.3498 \\
-Falcon3-Mamba-7B & \texttt{int4\_mixed\_ssm} & 13880.7 & 8.92 (-0.17\%) & 0.0056 & 98.0\% & \textbf{80\%} & 251.6\,ms & 8.6823 \\
+\multicolumn{8}{l}{\textit{Falcon3-Mamba-7B (Pure SSM; TTFT@2K: 819.9\,ms unquantized vs.\ 916.0\,ms uniform)}} \\
+\texttt{bf16} & 13,896.7 & 0.0 & 0.000 & 48.0 $\pm$ 3.5 & 9.51 $\pm$ 0.06 & 7.035 $\pm$ 0.063 & 17,236.1 \\
+\texttt{int4\_uniform} & 4,359.0 & $+$3.29 $\pm$ 1.15 & 0.074 $\pm$ 0.004 & 53.0 $\pm$ 3.5 & 7.29 $\pm$ 0.02 & 6.635 $\pm$ 0.021 & 7,698.5 \\
+\texttt{int4\_mixed\_ssm} & 13,880.7 & $-$0.43 $\pm$ 0.20 & 0.005 $\pm$ 0.000 & 47.5 $\pm$ 3.5 & 7.12 $\pm$ 0.03 & 8.271 $\pm$ 0.035 & 17,220.1 \\
 \midrule
-Falcon-H1-7B & \texttt{bf16} & 14477.3 & 33.23 (+0.00\%) & 0.0000 & 100.0\% & 100\% & 407.3\,ms & 8.3321 \\
-Falcon-H1-7B & \texttt{int4\_uniform} & 4874.2 & 33.94 (+2.13\%) & 0.0981 & 86.1\% & 100\% & 497.9\,ms & 8.5504 \\
-Falcon-H1-7B & \texttt{int4\_mixed\_ssm} & \textbf{6739.7} & \textbf{33.71 (+1.42\%)} & \textbf{0.0829} & \textbf{87.3\%} & \textbf{100\%} & \textbf{260.1\,ms} & \textbf{8.3616} \\
+\multicolumn{8}{l}{\textit{Falcon-H1-7B (Parallel Hybrid; TTFT@2K: 680.4\,ms vs.\ 736.4\,ms uniform vs.\ 735.1\,ms mixed)}} \\
+\texttt{bf16} & 14,477.3 & 0.0 & 0.000 & 85.0 $\pm$ 2.5 & 8.96 $\pm$ 0.03 & 7.676 $\pm$ 0.124 & 15,818.1 \\
+\texttt{int4\_uniform} & 4,874.2 & $+$4.78 $\pm$ 2.19 & 0.111 $\pm$ 0.009 & 87.5 $\pm$ 2.3 & 6.66 $\pm$ 0.02 & 7.301 $\pm$ 0.080 & 6,215.0 \\
+\texttt{int4\_mixed\_ssm} & 6,739.7 & $+$3.36 $\pm$ 1.83 & 0.094 $\pm$ 0.006 & 87.0 $\pm$ 2.4 & 6.64 $\pm$ 0.05 & 8.162 $\pm$ 0.086 & 8,080.5 \\
 \bottomrule
-\end{tabular}%
-}
+\end{tabular}
 \end{table}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{../results/plots/benchmark_quant-ablation_charts.png}
-\caption{Quantization Fidelity, Memory, and Energy Ablation across the 7B Triad. Left to right: Static Weight Footprint (MB), Evaluation Perplexity Drift ($\Delta\text{PPL}\% = \frac{\mathrm{PPL}_Q - \mathrm{PPL}_{\mathrm{bf16}}}{\mathrm{PPL}_{\mathrm{bf16}}} \times 100$), Token-Level Logit KL Divergence ($\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$), Top-1 Output Agreement (\%), and Zero-Shot Task Accuracy (\%). Uniform 4-bit NormalFloat induces catastrophic accuracy loss on pure Mamba ($80\% \to 40\%$), whereas branch-aware mixed precision (\texttt{int4\_mixed\_ssm}) on \texttt{Falcon-H1-7B} compresses weights by $-53.5\%$ while preserving full $100\%$ zero-shot accuracy.}
+\includeresultfigure{benchmark_quant-ablation_charts.pdf}
+\caption{Quantization fidelity, memory footprint, and serving latency across the 7B triad. (a) Within-model relative perplexity drift ($\Delta\text{PPL}\% \pm \text{SE}$) versus static weight footprint (GiB); (b) Token-level logit Kullback-Leibler divergence $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ ($\pm \text{SE}$) across quantized formats; (c) 200-item templated probe accuracy (\% $\pm$ binomial SE); (d) Total decode energy consumption per token (J/tok $\pm$ std) at context length $N=8{,}192$.}
 \label{fig:quant}
 \end{figure}
 
-\subsection{\texttt{vLLM} (CUDA Graphs) vs.\ \texttt{hf\_eager}: Roofline MBU and Energy Crossover}
-Table~\ref{tab:vllm} shows that capturing Piecewise and Full CUDA Graphs in \texttt{vLLM} v1 eliminates sequential layer-launch overhead across the 44--64 layers of \texttt{Falcon-H1-7B} and \texttt{Falcon3-Mamba-7B}, boosting MBU from $\sim 35\%$ to \textbf{84.2\%--91.1\%}, delivering a \textbf{2.36$\times$--2.54$\times$ decode speedup}, cutting total energy per token by \textbf{-47.6\%}, and overtaking \texttt{Falcon3-7B} at $N=8{,}192$.
+The empirical quantization data reveals several critical findings:
+\begin{itemize}
+    \item \textbf{No Catastrophic Accuracy Collapse:} Across all models and precisions, probe accuracy differences remain within $1\text{--}1.5$ standard errors of unquantized baselines (e.g., for \texttt{Falcon3-Mamba-7B}: 48.0\% $\to$ 53.0\% $\to$ 47.5\%; for \texttt{Falcon-H1-7B}: 85.0\% $\to$ 87.5\% $\to$ 87.0\%). The previously reported collapse of Mamba accuracy from 80\% to 40\% does not replicate under the expanded 200-item probe. Top-1 output token agreement with BF16 baselines remains high across models: 83.0\% for \texttt{Falcon3-7B} INT4, 88.5\% for \texttt{Falcon3-Mamba-7B} uniform INT4 (97.3\% under mixed precision), and 84.8\% vs.\ 86.0\% for \texttt{Falcon-H1-7B} uniform vs.\ mixed INT4.
+    \item \textbf{Role of Mixed Precision on Pure SSM:} Applying the recipe \texttt{int4\_mixed\_ssm} to \texttt{Falcon3-Mamba-7B} leaves almost all weights in BF16 ($13{,}880.7\,\text{MB}$ vs.\ $13{,}896.7\,\text{MB}$), as the model lacks Attention and MLP blocks targeted by the recipe. This configuration achieves near-zero distribution drift ($\mathrm{KL}=0.005 \pm 0.0002$), functioning as an experimental control confirming that the layer skip-list leaves the recurrent path unperturbed.
+    \item \textbf{Mixed Precision on Hybrid Falcon-H1:} On \texttt{Falcon-H1-7B}, \texttt{int4\_mixed\_ssm} compresses static weights by 53.4\% ($14.48 \to 6.74\,\text{GB}$). Compared to \texttt{int4\_uniform} ($4.87\,\text{GB}$), it achieves a modest $\sim 15\%$ lower KL divergence ($0.094 \pm 0.006$ vs.\ $0.111 \pm 0.009$, a difference of $\approx 1.5$ combined standard errors), lower mean perplexity drift ($+3.36\%$ vs.\ $+4.78\%$, with overlapping standard errors), and slightly higher top-1 agreement (86.0\% vs.\ 84.8\%). However, retaining $1.87\,\text{GB}$ of additional weights in BF16 increases memory traffic per token. At 8K context, \texttt{int4\_mixed\_ssm} is slower-or-equal ($6.64 \pm 0.05$ vs.\ $6.66 \pm 0.02\,\text{tok/s}$) and consumes more energy per token ($8.162 \pm 0.086$ vs.\ $7.301 \pm 0.080\,\text{J/tok}$) than uniform INT4. Prefill TTFT at 2K context is equal between uniform and mixed quantization ($736.4$ vs.\ $735.1\,\text{ms}$, compared to $552.0$ vs.\ $634.1\,\text{ms}$ on \texttt{Falcon3-7B} and $819.9$ vs.\ $916.0$ vs.\ $838.5\,\text{ms}$ on \texttt{Falcon3-Mamba-7B}).
+    \item \textbf{Hardware Allocation Bounds on 8\,GB GPUs:} Peak VRAM for \texttt{Falcon-H1-7B} under \texttt{int4\_mixed\_ssm} reaches $7{,}001\,\text{MB}$ at context 512 and $8{,}080.5\,\text{MB}$ at context 8K. Consequently, claims that this recipe unlocks deployment on 8\,GB consumer GPUs are unsupported on standard PyTorch memory allocators, as peak prefill memory exceeds 8\,GB at long contexts.
+    \item \textbf{Eager Dequantization Slows SSM Decode:} In Hugging Face eager execution with \texttt{bitsandbytes}, 4-bit NormalFloat quantization speeds up \texttt{Falcon3-7B} decode at 8K context (from $14.19$ to $18.58\,\text{tok/s}$, reducing energy by 24.1\%), but slows decode for both SSM-based models (\texttt{Falcon-H1-7B}: $8.96 \to 6.66\,\text{tok/s}$; \texttt{Falcon3-Mamba-7B}: $9.51 \to 7.29\,\text{tok/s}$).
+    \item \textbf{Perplexity Artifacts on Small Corpora:} \texttt{Falcon3-7B} under \texttt{int4\_uniform} exhibits a negative relative $\Delta$PPL ($-3.31 \pm 1.99\%$). This is an artifact of the small 6-passage evaluation corpus; logit KL divergence ($0.175 \pm 0.020$) serves as the more reliable indicator of distribution drift.
+\end{itemize}
+
+\subsection{\texttt{vLLM} (CUDA Graphs) vs.\ Hugging Face Eager: Roofline and Energy Crossover}
+\label{sec:vllm_results}
+Table~\ref{tab:vllm} and Figure~\ref{fig:vllm} detail performance across all 18 configuration rows (3 architectures $\times$ 3 sequence lengths $\times$ 2 serving engines).
 
 \begin{table}[htbp]
 \centering
-\caption{\texttt{vLLM} (CUDA Graphs) vs.\ \texttt{hf\_eager} Roofline MFU/MBU and Energy Telemetry.}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{\texttt{vLLM} (CUDA graph capture) versus Hugging Face eager execution across sequence lengths ($n=5$ trials, reported as mean $\pm$ std). MBU represents analytical model bandwidth utilization against the NVIDIA L4 300\,GB/s GDDR6 peak. MFU is 0.18\%--0.22\% across all models and engines, reflecting memory-bandwidth-bound single-stream decoding ($B=1$).}
 \label{tab:vllm}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lrlrrrrrr}
+\begin{tabular}{lrlrrrrr}
 \toprule
-\textbf{Architecture} & \textbf{Ctx} & \textbf{Engine} & \textbf{TTFT (ms)} & \textbf{Decode (tok/s)} & \textbf{Total J/tok} & \textbf{Dyn J/tok} & \textbf{HBM (GB/s)} & \textbf{MBU (\%)} \\
+\textbf{Model} & \textbf{Ctx} & \textbf{Engine} & \textbf{TTFT (ms)} & \textbf{Decode (tok/s)} & \textbf{Total J/tok} & \textbf{MBU (\%)} & \textbf{MFU (\%)} \\
 \midrule
-Falcon3-7B & 512 & \texttt{hf\_eager} & 144.5 & 16.20 & 4.4199 & 3.4091 & 245.6 & 81.9\% \\
-Falcon3-7B & 512 & \texttt{vllm\_cudagraph} & 153.7 & \textbf{17.73} & \textbf{3.9989} & 2.9538 & 265.5 & \textbf{88.5\%} \\
-Falcon3-7B & 8192 & \texttt{hf\_eager} & 2466.9 & 14.08 & 5.0723 & 3.9233 & 243.6 & 81.2\% \\
-Falcon3-7B & 8192 & \texttt{vllm\_cudagraph} & 1774.0 & \textbf{16.37} & \textbf{4.3848} & 3.2530 & 283.2 & \textbf{94.4\%} \\
+\multicolumn{8}{l}{\textit{Falcon3-7B (Pure Transformer)}} \\
+& 512 & \texttt{hf\_eager} & 153.5 $\pm$ 7.0 & 16.43 $\pm$ 0.03 & 4.376 $\pm$ 0.034 & 82.0 & 0.20 \\
+& 512 & \texttt{vllm} & 146.8 $\pm$ 4.8 & 17.54 $\pm$ 0.02 & 4.079 $\pm$ 0.063 & 87.6 & 0.21 \\
+& 2048 & \texttt{hf\_eager} & 552.0 $\pm$ 6.2 & 15.91 $\pm$ 0.02 & 4.529 $\pm$ 0.011 & 80.4 & 0.19 \\
+& 2048 & \texttt{vllm} & 554.4 $\pm$ 6.1 & 17.34 $\pm$ 0.02 & 4.145 $\pm$ 0.017 & 87.6 & 0.21 \\
+& 8192 & \texttt{hf\_eager} & 2674.1 $\pm$ 23.1 & 14.19 $\pm$ 0.03 & 5.074 $\pm$ 0.012 & 75.0 & 0.18 \\
+& 8192 & \texttt{vllm} & 2367.3 $\pm$ 26.9 & 16.55 $\pm$ 0.02 & 4.348 $\pm$ 0.011 & 87.5 & 0.20 \\
 \midrule
-Falcon3-Mamba-7B & 512 & \texttt{hf\_eager} & 252.9 & 6.97 & 7.2381 & 2.8185 & 103.9 & 34.6\% \\
-Falcon3-Mamba-7B & 512 & \texttt{vllm\_cudagraph} & 242.8 & \textbf{17.29 (2.48$\times$)} & \textbf{4.1135} & 2.1241 & 252.5 & \textbf{84.2\%} \\
-Falcon3-Mamba-7B & 8192 & \texttt{hf\_eager} & 3367.4 & 6.93 & 7.9367 & 3.4942 & 125.0 & 41.6\% \\
-Falcon3-Mamba-7B & 8192 & \texttt{vllm\_cudagraph} & 3391.7 & \textbf{17.30 (2.50$\times$)} & \textbf{4.1719} & 2.1834 & 252.6 & \textbf{84.2\%} \\
+\multicolumn{8}{l}{\textit{Falcon3-Mamba-7B (Pure SSM)}} \\
+& 512 & \texttt{hf\_eager} & 225.0 $\pm$ 5.2 & 9.38 $\pm$ 0.03 & 7.005 $\pm$ 0.110 & 45.7 & 0.18 \\
+& 512 & \texttt{vllm} & 221.9 $\pm$ 6.5 & 17.26 $\pm$ 0.04 & 4.140 $\pm$ 0.062 & 84.1 & 0.21 \\
+& 2048 & \texttt{hf\_eager} & 819.9 $\pm$ 8.6 & 9.45 $\pm$ 0.04 & 6.788 $\pm$ 0.084 & 46.0 & 0.18 \\
+& 2048 & \texttt{vllm} & 859.9 $\pm$ 11.7 & 17.29 $\pm$ 0.01 & 4.152 $\pm$ 0.012 & 84.3 & 0.21 \\
+& 8192 & \texttt{hf\_eager} & 3605.4 $\pm$ 56.5 & 9.51 $\pm$ 0.06 & 7.035 $\pm$ 0.063 & 46.3 & 0.18 \\
+& 8192 & \texttt{vllm} & 3354.2 $\pm$ 15.0 & 17.27 $\pm$ 0.01 & 4.152 $\pm$ 0.012 & 84.2 & 0.21 \\
 \midrule
-Falcon-H1-7B & 512 & \texttt{hf\_eager} & 407.3 & 7.02 & 7.4812 & 3.1718 & 107.8 & 35.9\% \\
-Falcon-H1-7B & 512 & \texttt{vllm\_cudagraph} & \textbf{170.2} & \textbf{16.59 (2.36$\times$)} & \textbf{4.2875} & 2.2860 & 254.6 & \textbf{84.8\%} \\
-Falcon-H1-7B & 2048 & \texttt{vllm\_cudagraph} & 730.6 & \textbf{17.68 (2.54$\times$)} & \textbf{4.0790} & 2.2010 & 272.5 & \textbf{90.8\%} \\
-Falcon-H1-7B & 8192 & \texttt{hf\_eager} & 3123.7 & 6.96 & 8.3321 & 4.0081 & 115.2 & 38.4\% \\
-Falcon-H1-7B & 8192 & \texttt{vllm\_cudagraph} & \textbf{2141.8} & \textbf{16.51 (2.37$\times$)} & \textbf{4.3670} & 2.3564 & 273.3 & \textbf{91.1\%} \\
+\multicolumn{8}{l}{\textit{Falcon-H1-7B (Parallel Hybrid)}} \\
+& 512 & \texttt{hf\_eager} & 258.2 $\pm$ 175.4 & 9.02 $\pm$ 0.05 & 7.044 $\pm$ 0.213 & 46.1 & 0.18 \\
+& 512 & \texttt{vllm} & 176.2 $\pm$ 9.7 & 16.59 $\pm$ 0.02 & 4.294 $\pm$ 0.089 & 84.8 & 0.20 \\
+& 2048 & \texttt{hf\_eager} & 680.4 $\pm$ 12.5 & 9.06 $\pm$ 0.08 & 7.489 $\pm$ 0.115 & 46.7 & 0.18 \\
+& 2048 & \texttt{vllm} & 623.0 $\pm$ 6.8 & 16.42 $\pm$ 0.03 & 4.390 $\pm$ 0.010 & 84.4 & 0.20 \\
+& 8192 & \texttt{hf\_eager} & 3259.3 $\pm$ 46.1 & 8.96 $\pm$ 0.03 & 7.676 $\pm$ 0.124 & 47.9 & 0.18 \\
+& 8192 & \texttt{vllm} & 2643.0 $\pm$ 8.9 & 16.15 $\pm$ 0.05 & 4.450 $\pm$ 0.019 & 84.5 & 0.20 \\
 \bottomrule
-\end{tabular}%
-}
+\end{tabular}
 \end{table}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{../results/plots/benchmark_vllm_mfu_charts.png}
-\caption{\texttt{vLLM} (CUDA Graphs) vs.\ \texttt{hf\_eager} Roofline Telemetry and Energy Crossover. Top row: Prefill TTFT (ms) and Decode Throughput (tokens/s). Bottom row: Total Energy per Token (J/tok), Achieved HBM Bandwidth (GB/s), and Model Bandwidth Utilization ($\mathrm{MBU}\%$). Capturing CUDA Graphs in \texttt{vLLM} unlocks $84.2\%\text{--}91.1\%$ MBU on \texttt{Falcon-H1-7B} and \texttt{Falcon3-Mamba-7B}, eliminating kernel-launch stalls and driving a $2.36\times\text{--}2.54\times$ throughput speedup that overtakes \texttt{Falcon3-7B} at $N=8{,}192$.}
+\includeresultfigure{benchmark_vllm_mfu_charts.pdf}
+\caption{\texttt{vLLM} (CUDA graph capture) versus Hugging Face eager execution across sequence lengths $N \in \{512, 2048, 8192\}$ ($n=5$ trials, error bars denote $\pm$ std). (a) Decode throughput (tokens/s); (b) Analytical Model Bandwidth Utilization (MBU \%) relative to the 300\,GB/s GDDR6 peak; (c) Total decode energy consumption per token (J/tok); (d) Prefill Time-To-First-Token (TTFT in ms).}
 \label{fig:vllm}
 \end{figure}
 
+The serving engine comparison establishes the following conclusions:
+\begin{itemize}
+    \item \textbf{Graph Capture Resolves SSM Launch Stalls:} Capturing CUDA graphs in \texttt{vLLM} accelerates decode throughput by $1.8\text{--}1.9\times$ for both \texttt{Falcon3-Mamba-7B} ($9.38 \to 17.26\,\text{tok/s}$ at 512; $9.51 \to 17.27\,\text{tok/s}$ at 8K) and \texttt{Falcon-H1-7B} ($9.02 \to 16.59\,\text{tok/s}$ at 512; $8.96 \to 16.15\,\text{tok/s}$ at 8K). Total energy per token decreases by $\sim 41\%$ for Mamba and $39\%\text{--}42\%$ for Falcon-H1. In contrast, \texttt{Falcon3-7B} gains only $1.07\text{--}1.17\times$ in decode throughput ($14.19 \to 16.55\,\text{tok/s}$ at 8K). This demonstrates that the eager execution gap is primarily host-side sequential kernel launch overhead across deep recurrent networks.
+    \item \textbf{Serving Hierarchy at 8K Context under \texttt{vLLM}:} At sequence length $N=8{,}192$, \texttt{Falcon3-Mamba-7B} is the fastest and most energy-efficient model ($17.27 \pm 0.01\,\text{tok/s}$, $4.152 \pm 0.012\,\text{J/tok}$), outperforming \texttt{Falcon3-7B} ($16.55 \pm 0.02\,\text{tok/s}$, $4.348 \pm 0.011\,\text{J/tok}$) by 4.4\% in decode speed and 4.5\% in energy efficiency. \texttt{Falcon-H1-7B} does not overtake \texttt{Falcon3-7B} at 8K, trailing it by $\approx 2.4\%$ in throughput ($16.15 \pm 0.05$ vs.\ $16.55 \pm 0.02\,\text{tok/s}$) and requiring slightly more energy ($4.450 \pm 0.019$ vs.\ $4.348 \pm 0.011\,\text{J/tok}$). \texttt{Falcon3-7B} leads \texttt{Falcon-H1-7B} at every measured context length under \texttt{vLLM}.
+    \item \textbf{Context Scaling Trends under Graph Execution:} Under \texttt{vLLM}, \texttt{Falcon3-7B} decode throughput falls by 5.6\% between 512 and 8K context ($17.54 \to 16.55\,\text{tok/s}$). \texttt{Falcon3-Mamba-7B} decode throughput is completely flat ($17.26 \to 17.27\,\text{tok/s}$), while \texttt{Falcon-H1-7B} exhibits a mild 2.7\% decrease ($16.59 \to 16.15\,\text{tok/s}$).
+    \item \textbf{Bandwidth Utilization Sinks:} Analytical MBU reaches $87.5\%\text{--}87.6\%$ for \texttt{Falcon3-7B}, $84.1\%\text{--}84.3\%$ for \texttt{Falcon3-Mamba-7B}, and $84.4\%\text{--}84.8\%$ for \texttt{Falcon-H1-7B} under \texttt{vLLM}. In contrast, eager execution of SSM models achieves only $\approx 46\%$ analytical MBU due to kernel launch gaps.
+\end{itemize}
+
+\section{Discussion}
+
+\subsection{Why Eager SSM Execution Lags Transformers}
+In standard eager PyTorch execution, each layer of a deep neural network incurs CPU dispatch and CUDA driver overhead. For \texttt{Falcon3-Mamba-7B} (64 layers) and \texttt{Falcon-H1-7B} (44 layers), generating a single token requires dispatching dozens of individual operations per layer (including 1D convolutions, input-dependent selective scans, discretization steps, and residual connections). Although fused kernels (\texttt{causal\_conv1d} and \texttt{mamba\_ssm}) are active, dispatching micro-kernels sequentially across 44--64 layers creates a CPU submission bottleneck during batch-1 decoding, where each step executes in tens of milliseconds. The GPU memory controller remains idle between kernel launches, resulting in an analytical MBU of only $\sim 46\%$. Conversely, the 28-layer \texttt{Falcon3-7B} executes fewer, larger matrix multiplications per layer, keeping the GPU pipeline saturated ($80.4\%\text{--}82.0\%$ eager MBU). Capturing CUDA graphs in \texttt{vLLM} eliminates host CPU dispatch entirely, elevating SSM memory bandwidth utilization to $84.1\%\text{--}84.8\%$ and doubling throughput.
+
+\subsection{KV Cache Memory Traffic and Transformer Throughput Decay}
+The 27.6\% decode slowdown observed in \texttt{Falcon3-7B} from 512 to 16K context ($16.43 \to 11.90\,\text{tok/s}$) illustrates the fundamental bandwidth scaling constraint of GQA Transformers. Because batch-1 decode is strictly memory-bandwidth bound, the generation time per token is proportional to the total bytes read from device DRAM:
+\begin{equation}
+T_{\mathrm{step}} \approx \frac{\mathrm{Bytes}_{\mathrm{weights}} + \mathrm{Bytes}_{\mathrm{KV}}(N)}{\mathrm{BW}_{\mathrm{achieved}}}
+\end{equation}
+At $N=512$, the KV cache requires $56\,\text{MB}$, adding negligible overhead ($\approx 0.4\%$) to the $14.2\,\text{GB}$ static weight stream. At $N=16{,}384$, the KV cache footprint expands to $1{,}792\,\text{MB}$, requiring $1.79\,\text{GB}$ of additional DRAM reads on every single output token. This extra memory traffic directly degrades decode throughput and drives a 38.3\% increase in energy consumption per token ($4.38 \to 6.05\,\text{J/tok}$). In contrast, pure Mamba maintains a constant $20\,\text{MB}$ recurrent state, and hybrid Falcon-H1 maintains a state of $771\,\text{MB}$ at 16K ($2.3\times$ smaller than the Transformer), keeping decode throughput invariant to context length within $\approx 1\%$.
+
+\subsection{Why NF4 Slows SSM Decode in bitsandbytes}
+In \texttt{bitsandbytes}, 4-bit NormalFloat parameters are dynamically dequantized into 16-bit floating-point registers immediately prior to computation. In dense Transformer layers, where weights are consumed by large matrix multiplications, the reduction in memory traffic (fetching 4 bits per weight instead of 16 bits) substantially outweighs the ALU cycles required for on-the-fly dequantization, accelerating \texttt{Falcon3-7B} decode from $14.19$ to $18.58\,\text{tok/s}$ at 8K context. However, in recurrent SSM blocks, weight tensors are distributed across multiple smaller projection matrices, gating operations, and discretization parameters. In eager execution, dequantizing these fragmented tensors introduces additional kernel launch overhead, higher register pressure, and reduced memory coalescing, which outweighs the bandwidth savings and slows SSM decode by $25\%\text{--}26\%$.
+
+\subsection{Trade-Offs of Branch-Aware Mixed-Precision Quantization}
+In \texttt{Falcon-H1-7B}, \texttt{int4\_mixed\_ssm} protects Mamba projections in BF16 while quantizing Attention and MLP layers to NF4, compressing weights by 53.4\% ($14.48 \to 6.74\,\text{GB}$). While this protects recurrent state transitions from numerical drift, it achieves only a modest 15\% lower KL divergence relative to uniform INT4 ($0.094 \pm 0.006$ vs.\ $0.111 \pm 0.009$, a difference of $\approx 1.5$ combined standard errors), while relative $\Delta$PPL differences ($+3.36\%$ vs.\ $+4.78\%$) fall within overlapping standard errors. This occurs because the Attention and SwiGLU MLP blocks account for the majority of parameter volume and activation dynamic range; quantizing them introduces the dominant share of output distribution distortion. Furthermore, retaining $1.87\,\text{GB}$ of additional BF16 weights increases DRAM read volume per token, making mixed-SSM less energy-efficient ($8.16$ vs.\ $7.30\,\text{J/tok}$) than uniform INT4 at 8K context. Moreover, peak prefill VRAM reaches $8{,}080\,\text{MB}$ at 8K, demonstrating that mixed-precision hybrid models do not fit on 8\,GB GPUs under standard allocators.
+
 \section{Practical Systems Guidelines for Deploying Hybrid SSMs}
 \begin{enumerate}
-    \item \textbf{Always Enable CUDA Graphs in Serving Engines:} Eager execution in standard PyTorch leaves over $60\%$ of GPU memory bandwidth unutilized on deep 44--64 layer SSM and hybrid architectures ($34.6\%\text{--}38.4\%$ achieved MBU). Deploying with \texttt{vLLM} CUDA Graphs resolves this sequential kernel-launch bottleneck, boosting achieved bandwidth to $252.6\text{--}273.3\,\text{GB/s}$ ($84.2\%\text{--}91.1\%$ MBU) and cutting energy consumption by up to $-47.6\%$.
-    \item \textbf{Cap Maximum Concurrent Sequences on Datacenter GPUs:} By default, \texttt{vLLM} allocates state blocks assuming high concurrency ($\texttt{max\_num\_seqs}=256$), which pre-allocates $\sim 16.8\,\text{GiB}$ of recurrent state tensors on \texttt{Falcon-H1-7B}, triggering out-of-memory errors on 24\,GB GPUs alongside $14.5\,\text{GB}$ model weights. Bounding $\texttt{max\_num\_seqs} \in [8, 16]$ caps the recurrent state pool to $<1.1\,\text{GiB}$, ensuring reliable high-throughput deployment.
-    \item \textbf{Protect Recurrent Projections during Quantization:} Post-training quantization must never naively apply uniform INT4 to recurrent SSM state-space transitions ($\Delta_t, B_t, C_t$). Adopting a branch-aware mixed-precision topology (\texttt{int4\_mixed\_ssm}) compresses Attention and MLP projections to INT4 while preserving Mamba projections in BF16, yielding a $-53.5\%$ static memory reduction while maintaining $100\%$ zero-shot task fidelity.
+    \item \textbf{Deploy Exclusively with CUDA Graph Capture:} Serving deep recurrent SSMs or hybrid models in eager PyTorch wastes over 40\% of available GPU memory bandwidth due to host CPU dispatch latency across 44--64 layers. Enabling CUDA graphs in serving runtimes like \texttt{vLLM} is required to unlock full GDDR6 memory bandwidth ($84.1\%\text{--}84.8\%$ MBU) and achieve competitive decode throughput.
+    \item \textbf{Restrict Concurrent Sequences in vLLM:} The default \texttt{vLLM} configuration allocates recurrent state blocks assuming high concurrency ($\texttt{max\_num\_seqs}=256$), which reserves over $16\,\text{GB}$ of recurrent state tensors on \texttt{Falcon-H1-7B} and triggers out-of-memory errors on 24\,GB GPUs alongside model weights. Restricting $\texttt{max\_num\_seqs} \in [8, 16]$ caps recurrent state allocation to $<1.1\,\text{GB}$, ensuring stable operation.
+    \item \textbf{Select Quantization Based on Serving Context:} On pure Transformers, NF4 quantization yields immediate throughput and energy gains during decode. On hybrid models, uniform INT4 achieves greater weight compression ($4.87\,\text{GB}$) and lower decode energy at 8K ($7.30\,\text{J/tok}$) than mixed-precision recipes ($6.74\,\text{GB}$, $8.16\,\text{J/tok}$), with only minor fidelity trade-offs. Mixed precision is justified primarily when minimizing distribution drift on downstream tasks sensitive to recurrent state stability.
 \end{enumerate}
 
-\section{Scope, Limitations, and Future Directions}
-To ensure rigorous interpretation of our systems findings and proactively address potential reviewer scrutiny, we contextualize our experimental boundaries across serving concurrency, evaluation metrics, and quantization methodologies.
+\section{Limitations}
+\begin{itemize}
+    \item \textbf{Single GPU Architecture:} Benchmarks were gathered exclusively on NVIDIA L4 GPUs (24\,GB GDDR6, Ada Lovelace architecture, 72\,W TDP). Datacenter GPUs with high-bandwidth memory (such as NVIDIA H100 with HBM3 or A100 with HBM2e) exhibit higher compute-to-bandwidth ratios, which will shift crossover boundaries.
+    \item \textbf{Single-Stream Batch Size ($B=1$):} Sweeps were conducted at batch size 1 to isolate memory-bandwidth-bound decode scaling. Under high-concurrency continuous batching ($B \ge 16$), execution shifts toward the compute-bound regime where Transformer KV caches scale as $O(B \cdot N)$ while SSM states scale as $O(B \cdot d_{\mathrm{state}})$.
+    \item \textbf{Scope of Quantization Recipes:} We evaluated zero-calibration NormalFloat4 (NF4 via \texttt{bitsandbytes}). Advanced post-training calibration methods (such as AWQ, GPTQ) and native 8-bit floating-point Tensor Core formats (FP8 GEMMs) were not evaluated.
+    \item \textbf{Probe Benchmark Independence:} The 200-item multiple-choice probe contains only 5 unique underlying questions each in the systems and Arabic domains across option permutations. Items are therefore not statistically independent, and binomial standard errors overstate independence. Probe accuracy represents a coarse functional check for catastrophic collapse rather than a comprehensive language benchmark.
+    \item \textbf{Analytical MBU Approximation:} MBU is estimated analytically from model configuration parameters and decode throughput against the 300\,GB/s peak bandwidth. It does not measure physical DRAM traffic via hardware performance counters and ignores activation and logit memory transactions.
+    \item \textbf{Container-Dependent Idle Power Baseline:} Pre-load idle power varied across serverless container instances ($13.5\,\text{W}\text{--}35.4\,\text{W}$). Consequently, dynamic Joules per token is reported as a secondary metric; total Joules per token is the primary metric.
+    \item \textbf{Evaluation Corpus Scale:} Perplexity and KL divergence were evaluated over a bilingual 6-passage corpus (769--1,223 scored tokens). Standard errors are calculated across passages ($n=6$). While adequate to detect relative distribution drift, small sample size explains anomalous negative $\Delta$PPL values ($-3.31\%$) for \texttt{Falcon3-7B} INT4.
+    \item \textbf{Single Experimental Session:} All reported measurements were gathered in a single dedicated 5-trial experimental session on Modal serverless instances.
+\end{itemize}
 
-\subsection{Single-Stream (\texorpdfstring{$B=1$}{B=1}) vs.\ High-Concurrency Serving}
-Our primary empirical sweeps deliberately isolate single-stream autoregressive decoding ($B=1$). In this operational regime, arithmetic intensity is approximately $1\,\text{FLOP/byte}$ (roughly $14\,\text{GFLOPs}$ per $14.5\,\text{GB}$ memory transaction per generated token on a 7B model), placing execution strictly in the memory-bandwidth-bound domain of the Roofline model. Single-stream evaluation represents the most stringent stress test for memory bandwidth and dynamic state overhead, as every generated token must read the entire parameter weight tensor alongside the accumulated context representation from HBM.
-
-In high-concurrency datacenter serving (e.g., continuous batching with $B \in [16, 64]$), arithmetic intensity increases proportionally with batch size ($B \cdot \text{FLOP/byte}$), shifting operation toward the Roofline compute knee where Tensor Core compute limits throughput. Crucially, in this batched regime, Transformer KV caches scale as $O(B \cdot N)$, consuming tens of gigabytes of VRAM and forcing aggressive cache paging or eviction. In contrast, the SSM recurrent state scales as $O(B \cdot d_{\mathrm{state}})$, remaining entirely invariant to context length $N$. Consequently, the memory footprint and bandwidth advantages demonstrated by \texttt{Falcon-H1-7B} in this single-stream study will compound significantly under batched serving, delaying OOM boundaries and sustaining high throughput across heavy concurrent request streams. Formally mapping this multi-stream continuous-batching crossover frontier under realistic Poisson request arrivals constitutes an immediate direction for future research.
-
-\subsection{Evaluation Fidelity Metrics and Cross-Tokenizer Perplexity}
-To evaluate model degradation under low-bit quantization, our benchmark framework employs a dual-tier assessment strategy:
-\begin{enumerate}
-    \item \textbf{Zero-Shot Task Probe Suite:} A focused 5-task deterministic evaluation suite spanning multi-step arithmetic reasoning (GSM8K style), scientific reasoning (ARC-Challenge), Arabic natural language comprehension (evaluating Falcon's foundational bilingual pretraining), and needle-in-a-haystack associative recall. These probes serve as a functional sanity check to verify that quantized models maintain instruction adherence and do not suffer catastrophic degeneration or infinite repetitive loops.
-    \item \textbf{Dense Statistical Foundations:} The primary statistical validity of our quantization claims does not rely on discrete task accuracy alone, but rests on dense, high-resolution continuous metrics: evaluation corpus perplexity drift ($\Delta\text{PPL}\%$) and token-level logit Kullback-Leibler divergence ($\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$) evaluated across more than $2{,}400$ consecutive tokens alongside Top-1 token agreement rates.
-\end{enumerate}
-Importantly, raw baseline perplexity scores across different model families---such as $17.53$ for \texttt{Falcon3-7B}, $8.94$ for \texttt{Falcon3-Mamba-7B}, and $33.23$ for \texttt{Falcon-H1-7B}---cannot be directly compared against each other to infer relative pretraining capability. Each architecture employs a distinct tokenizer with different vocabulary sizes, byte-pair encodings, and tokenization segmentations, which intrinsically scales the cross-entropy loss $\mathcal{L} = -\frac{1}{T}\sum_t \log P(x_t)$. The meaningful empirical metric is the intra-model relative perplexity degradation:
-\begin{equation}
-\Delta\text{PPL}\% = \frac{\mathrm{PPL}_Q - \mathrm{PPL}_{\mathrm{bf16}}}{\mathrm{PPL}_{\mathrm{bf16}}} \times 100
-\end{equation}
-alongside the direct logit-distribution distance $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ against the unquantized model on the exact same token stream.
-
-\subsection{Zero-Calibration NF4 vs.\ Calibration-Based PTQ (AWQ/GPTQ/FP8)}
-In this investigation, we deliberately chose zero-calibration NormalFloat-4 (NF4 via \texttt{bitsand\-bytes}) rather than calibration-dependent post-training quantization schemes such as AWQ, GPTQ, or FP8 scaling. Calibration-based techniques require passing calibration sequences through the network to compute activation channel scales or inverse Hessian matrices. While effective for production Transformers, calibration datasets introduce dataset-specific optimization bias that can mask underlying recurrent instability: an optimizer tuned to a specific calibration slice may appear numerically stable on standard benchmarks but diverge when recurrent state transitions compound out-of-distribution errors over long sequences.
-
-By employing zero-calibration NF4, which maps weight distributions into optimal information-theoretic quantiles under a zero-mean normal prior without observing runtime activations, we directly isolate the intrinsic architectural vulnerability of recurrent SSM projections ($\Delta_t, B_t, C_t$) versus Attention projections. Having established this vulnerability baseline, extending branch-aware mixed precision to production calibration pipelines (such as AWQ with Mamba-aware channel protection and native FP8 Tensor Core GEMMs on NVIDIA Ada Lovelace and Hopper architectures) represents a high-priority future milestone.
+\section{Reproducibility \& Open Science}
+To facilitate full verification and reproduction of our empirical findings, all artifacts, benchmark configurations, and telemetry traces are publicly available:
+\begin{itemize}
+    \item \textbf{Software Environment:} NVIDIA driver 610.57.04, CUDA 12.4, PyTorch 2.5.1+cu124, Hugging Face \texttt{transformers} 4.57.6, \texttt{mamba\_ssm} 2.3.1, \texttt{causal\_conv1d} 1.7.0, \texttt{flash\_attn} 2.8.3.post2, \texttt{bitsandbytes} 0.50.2, and \texttt{vLLM} v1 (vLLM 0.32.0 in container). Runtime verification confirmed fused Mamba kernels were active (\texttt{fused\_kernels\_active: true}).
+    \item \textbf{vLLM Configuration:} CUDA graph capture enabled; serving flags configured with \texttt{enable\_prefix\_caching} = \texttt{False}, \texttt{max\_num\_seqs} = \texttt{8}, and \texttt{gpu\_memory\_utilization} = \texttt{0.92}. To resolve JIT compilation issues on CUDA 12.4 without \texttt{nvcc}, the FlashInfer sampler was disabled via \texttt{VLLM\_USE\_FLASHINFER\_SAMPLER=0}.
+    \item \textbf{Model Revision Hashes:}
+    \begin{itemize}
+        \item \texttt{Falcon3-7B-Instruct}: \texttt{1e57a0ecd176c7c139f289c60a74e57f887c3dfb}
+        \item \texttt{Falcon3-Mamba-7B-Instruct}: \texttt{79268d5c8e650ec0ec24aad2729bfc906f569580}
+        \item \texttt{Falcon-H1-7B-Instruct}: \texttt{41e72f27effbab80cd45b6e884688452253a3686}
+    \end{itemize}
+    \item \textbf{Code and Data Repositories:} Benchmark execution scripts, analysis routines, and plotting utilities are maintained at \href{https://github.com/HarithSami/falcon-hybrid-crossover-benchmark}{https://github.com/HarithSami/falcon-hybrid-crossover-benchmark}. Benchmark telemetry records and high-frequency power traces are deposited on Hugging Face at \href{https://huggingface.co/datasets/HarithSami/falcon-7b-hybrid-crossover-telemetry}{https://huggingface.co/datasets/HarithSami/falcon-7b-hybrid-crossover-telemetry}. Raw 50\,Hz time-series traces are provided in \texttt{results/raw\_50hz\_*\_traces.json}.
+\end{itemize}
 
 \section{Conclusion}
-Our empirical evaluation across TII's 7B triad establishes that parallel hybrid Mamba-Attention models (\texttt{Falcon-H1-7B}) combine the best systems properties of Transformers and SSMs when paired with (1) branch-aware mixed-precision quantization (\texttt{int4\_mixed\_ssm}, $-53.5\%$ weight VRAM with $100\%$ accuracy retention) and (2) CUDA-Graph execution in \texttt{vLLM} ($91.1\%$ Roofline MBU and $-47.6\%$ energy per token).
+Our controlled evaluation across TII's 7B architectural triad provides a clear systems perspective on hybrid State-Space Models:
+\begin{enumerate}
+    \item In standard eager PyTorch execution, \texttt{Falcon3-7B} outperforms both SSM models across all context lengths up to 16K, but this gap mostly reflects sequential kernel launch overhead in eager execution.
+    \item Serving with CUDA graphs in \texttt{vLLM} eliminates launch stalls, boosting SSM throughput by $1.8\text{--}1.9\times$ and elevating analytical MBU from $\sim 46\%$ to $\sim 84\%$. At 8K context under \texttt{vLLM}, \texttt{Falcon3-Mamba-7B} is fastest and most energy-efficient, leading \texttt{Falcon3-7B} by 4.4\% in speed and 4.5\% in energy efficiency, while hybrid \texttt{Falcon-H1-7B} trails \texttt{Falcon3-7B} by about 2.4\%.
+    \item In memory scaling, \texttt{Falcon-H1-7B} reaches peak VRAM near-parity with \texttt{Falcon3-7B} around 2K tokens and saves $1{,}671\,\text{MB}$ at 16K context, maintaining flat decode throughput while \texttt{Falcon3-7B} decode drops by 27.6\% due to expanding KV cache traffic.
+    \item Branch-aware mixed precision (\texttt{int4\_mixed\_ssm}) compresses hybrid weights by 53.4\% with a modest $\sim 15\%$ lower KL divergence than uniform INT4, but increases decode energy at 8K and exceeds 8\,GB peak VRAM, failing to fit into an 8\,GB GPU allocator.
+\end{enumerate}
+These findings demonstrate that parallel hybrid architectures provide tangible memory and throughput scaling benefits at long sequence lengths when paired with graph-capturing serving runtimes.
 
 \begin{thebibliography}{99}
-\bibitem{tii_falconh1_2025}
-Technology Innovation Institute (TII).
-\newblock \emph{Falcon-H1: A Family of Hybrid-Head Language Models Redefining Efficiency and Performance}.
-\newblock Technical Report, Abu Dhabi, UAE, 2025.
-
-\bibitem{tii_falcon3_2024}
-Technology Innovation Institute (TII).
-\newblock \emph{Falcon3 and Falcon3-Mamba Technical Reports}.
-\newblock Technical Report, Abu Dhabi, UAE, 2024--2025.
-
 \bibitem{gu_mamba_2024}
 A.~Gu and T.~Dao.
 \newblock Mamba: Linear-time sequence modeling with selective state spaces.
 \newblock \emph{Conference on Language Modeling (COLM)}, 2024.
+\newblock arXiv:\href{https://arxiv.org/abs/2312.00752}{2312.00752}.
 
 \bibitem{dao_mamba2_2024}
 T.~Dao and A.~Gu.
-\newblock Transformers are {SSMs}: Generalized models and efficient algorithms through structured state space duality (Mamba-2).
-\newblock \emph{International Conference on Machine Learning (ICML)}, 2024.
+\newblock Transformers are {SSMs}: Generalized models and efficient algorithms through structured state space duality.
+\newblock In \emph{International Conference on Machine Learning (ICML)}, 2024.
+\newblock arXiv:\href{https://arxiv.org/abs/2405.21060}{2405.21060}.
+
+\bibitem{tii_falconh1_2025}
+Technology Innovation Institute.
+\newblock \emph{Falcon-H1: A Family of Hybrid-Head Language Models Redefining Efficiency and Performance}.
+\newblock Technical Report, Abu Dhabi, UAE, 2025.
+\newblock arXiv:\href{https://arxiv.org/abs/2507.22448}{2507.22448}.
+
+\bibitem{tii_falconmamba_2024}
+Technology Innovation Institute.
+\newblock \emph{Falcon-Mamba: 7B Architecture and Performance}.
+\newblock Technical Report, Abu Dhabi, UAE, 2024.
+\newblock arXiv:\href{https://arxiv.org/abs/2410.05355}{2410.05355}.
+
+\bibitem{tii_falcon3_2024}
+Technology Innovation Institute.
+\newblock \emph{Falcon3 Family of Foundation Models}.
+\newblock Technical Report, Abu Dhabi, UAE, 2024.
+\newblock \url{https://falconllm.tii.ae/}.
 
 \bibitem{kwon_vllm_2023}
 W.~Kwon, Z.~Li, S.~Zhuang, Y.~Sheng, L.~Zheng, C.~H. Yu, J.~Gonzalez, H.~Zhang, and I.~Stoica.
 \newblock Efficient memory management for large language model serving with {PagedAttention}.
-\newblock \emph{ACM Symposium on Operating Systems Principles (SOSP)}, 2023.
+\newblock In \emph{ACM Symposium on Operating Systems Principles (SOSP)}, 2023.
+\newblock arXiv:\href{https://arxiv.org/abs/2309.06180}{2309.06180}.
 
-\bibitem{ieee_p1959}
+\bibitem{dettmers_qlora_2023}
+T.~Dettmers, A.~Pagnoni, A.~Holtzman, and L.~Zettlemoyer.
+\newblock {QLoRA}: Efficient finetuning of quantized {LLMs}.
+\newblock In \emph{Advances in Neural Information Processing Systems (NeurIPS)}, 2023.
+\newblock arXiv:\href{https://arxiv.org/abs/2305.14314}{2305.14314}.
+
+\bibitem{williams_roofline_2009}
+S.~Williams, A.~Waterman, and D.~Patterson.
+\newblock Roofline: An insightful visual performance model for multicore architectures.
+\newblock \emph{Communications of the ACM}, 52(4):65--76, 2009.
+\newblock \href{https://doi.org/10.1145/1498765.1498785}{doi:10.1145/1498765.1498785}.
+
+\bibitem{ieee_p1959_p1960}
 IEEE Standards Association.
-\newblock \emph{IEEE P1959 / P1960 Working Groups: Standards for Telemetry, Energy Efficiency, and Benchmarking of Machine Learning Systems}.
-\newblock IEEE Standard Drafts, 2025--2026.
+\newblock \emph{IEEE SA Project Pages: Project P1959 (Standard for Telemetry and Performance Evaluation of Machine Learning Systems) and Project P1960 (Standard for Energy Efficiency and Carbon Metrics in Computing Systems)}.
+\newblock IEEE Standards Association, 2025--2026.
+\newblock \url{https://standards.ieee.org}.
+\newblock Note: Benchmarking telemetry methodology was informed by working-group discussions; no published specification was formally implemented.
+
 \end{thebibliography}
 
 \end{document}

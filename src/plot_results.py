@@ -1,14 +1,36 @@
 """
-Generate Crossover & Energy Efficiency Plots from Modal Benchmark JSONs
-=======================================================================
+Generate 2x2 Vector PDF & High-Res PNG Plots with Error Bars from Modal Benchmark JSONs
+=======================================================================================
+Exports publication-ready 2x2 figures (both vector `.pdf` for LaTeX inclusion and `.png`
+for GitHub/LinkedIn) with 9-10pt typography, error bars (mean ± std / SE), and
+within-model relative ΔPPL% (avoiding raw cross-tokenizer PPL comparisons).
+
 Usage:
-  python src/plot_results.py results/benchmark_smoke.json
   python src/plot_results.py results/benchmark_crossover.json
+  python src/plot_results.py results/benchmark_quant-ablation.json
+  python src/plot_results.py results/benchmark_vllm_mfu.json
 """
 
 import json
 import sys
 from pathlib import Path
+
+
+def _apply_pub_style(plt):
+    plt.rcParams.update(
+        {
+            "font.size": 9.5,
+            "axes.titlesize": 10.5,
+            "axes.titleweight": "bold",
+            "axes.labelsize": 9.5,
+            "xtick.labelsize": 8.5,
+            "ytick.labelsize": 8.5,
+            "legend.fontsize": 8.0,
+            "figure.titlesize": 11.0,
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+        }
+    )
 
 
 def generate_summary_and_plots(json_path: str):
@@ -25,163 +47,238 @@ def generate_summary_and_plots(json_path: str):
         return
 
     rows = [r for r in raw_data if r.get("status") == "ok"]
-
     if not rows:
         print("No valid benchmark records found.")
         return
 
-    # 1. Print clean Markdown Table
-    print("\n### Benchmark Results Summary\n")
-    has_eval = any("eval_ppl" in r for r in rows)
-    if has_eval:
-        print(
-            "| Architecture | Precision | Context | TTFT (ms) | Decode (tok/s) | Peak VRAM (MB) | KV/State Growth (MB) | Energy (J/tok) | Eval PPL (Δ%) | KL vs BF16 | Top-1 Agree | Task Acc |"
-        )
-        print(
-            "| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
-        )
-        for r in rows:
-            ppl_str = f"{r.get('eval_ppl', 0.0):.2f} ({r.get('ppl_delta_pct', 0.0):+.1f}%)"
-            kl_str = f"{r.get('kl_div_vs_bf16', 0.0):.4f}"
-            agree_str = f"{r.get('top1_agree_pct', 100.0):.1f}%"
-            acc_str = f"{r.get('task_accuracy_pct', 0.0):.0f}%"
-            print(
-                f"| {r['arch_label']} | `{r['precision']}` | {r['context_length']} | "
-                f"{r['ttft_ms']:.1f} | {r['decode_tok_per_s']:.1f} | "
-                f"{r['peak_vram_mb']:.1f} | +{r['kv_or_state_growth_mb']:.1f} | "
-                f"**{r['joules_per_token_total']:.4f}** | {ppl_str} | {kl_str} | {agree_str} | {acc_str} |"
-            )
-    else:
-        print(
-            "| Architecture | Precision | Context | TTFT (ms) | Decode (tok/s) | Peak VRAM (MB) | KV/State Growth (MB) | Energy (J/tok) |"
-        )
-        print(
-            "| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: |"
-        )
-        for r in rows:
-            print(
-                f"| {r['arch_label']} | `{r['precision']}` | {r['context_length']} | "
-                f"{r['ttft_ms']:.1f} | {r['decode_tok_per_s']:.1f} | "
-                f"{r['peak_vram_mb']:.1f} | +{r['kv_or_state_growth_mb']:.1f} | "
-                f"**{r['joules_per_token_total']:.4f}** |"
-            )
+    precisions_present = sorted(set(r["precision"] for r in rows))
+    is_quant_ablation = len(precisions_present) > 1
 
-    # 2. Try plotting with matplotlib if installed locally
+    print(f"\n### Benchmark Summary ({path.name})\n")
+    print(
+        "| Architecture | Precision | Ctx | TTFT (ms) | Decode (tok/s) | Persist State (MB) | Peak VRAM (MB) | Energy (J/tok) | ΔPPL (%) | KL vs BF16 | Top-1 Agree | Acc (N=200) |"
+    )
+    print(
+        "| :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+    )
+    for r in rows:
+        ttft_str = f"{r['ttft_ms']:.1f}±{r.get('ttft_std_ms', 0.0):.1f}"
+        tps_str = f"{r['decode_tok_per_s']:.2f}±{r.get('decode_tok_per_s_std', 0.0):.2f}"
+        pstate_mb = r.get("analytical_persistent_state_mb", r.get("kv_or_state_growth_mb", 0.0))
+        jt_str = f"{r['joules_per_token_total']:.4f}±{r.get('joules_per_token_total_std', 0.0):.4f}"
+        dppl_str = f"{r.get('ppl_delta_pct', 0.0):+.2f}±{r.get('ppl_delta_se_pct', 0.0):.2f}%"
+        kl_str = f"{r.get('kl_div_vs_bf16', 0.0):.4f}±{r.get('kl_div_se', 0.0):.4f}"
+        agree_str = f"{r.get('top1_agree_pct', 100.0):.1f}%"
+        acc_str = f"{r.get('task_accuracy_pct', 0.0):.1f}±{r.get('task_accuracy_se_pct', 0.0):.1f}%"
+        print(
+            f"| {r['arch_label']} | `{r['precision']}` | {r['context_length']} | "
+            f"{ttft_str} | {tps_str} | {pstate_mb:.1f} | {r['peak_vram_mb']:.1f} | "
+            f"**{jt_str}** | {dppl_str} | {kl_str} | {agree_str} | {acc_str} |"
+        )
+
     try:
         import matplotlib.pyplot as plt
     except ImportError:
-        print("\n(Install `matplotlib` locally to auto-generate PNG plots.)")
         return
 
+    _apply_pub_style(plt)
     out_dir = path.parent / "plots"
     out_dir.mkdir(exist_ok=True)
 
-    # Group by (arch_label, precision)
-    groups: dict[tuple[str, str], list[dict]] = {}
-    for r in rows:
-        key = (r["arch_label"], r["precision"])
-        groups.setdefault(key, []).append(r)
+    if is_quant_ablation:
+        _plot_quant_ablation_2x2(plt, rows, out_dir, path.stem)
+    else:
+        _plot_crossover_2x2(plt, rows, out_dir, path.stem)
 
+
+def _plot_crossover_2x2(plt, rows: list[dict], out_dir: Path, stem: str):
+    groups: dict[str, list[dict]] = {}
+    for r in rows:
+        groups.setdefault(r["arch_label"], []).append(r)
     for k in groups:
         groups[k].sort(key=lambda x: x["context_length"])
 
-    ncols = 4 if has_eval else 3
-    fig, axes = plt.subplots(1, ncols, figsize=(21 if has_eval else 16, 5))
-    fig.suptitle(
-        "TII Falcon Architecture Crossover: Throughput, Memory, Energy & Quantization Fidelity",
-        fontsize=13,
-        fontweight="bold",
-    )
+    fig, axes = plt.subplots(2, 2, figsize=(9.5, 6.8))
+    ax_tps, ax_mem = axes[0, 0], axes[0, 1]
+    ax_eng, ax_ttft = axes[1, 0], axes[1, 1]
 
-    for (arch, prec), grp in groups.items():
-        label = f"{arch} [{prec}]"
+    palette = {
+        "Pure Transformer (7B)": ("#1f77b4", "o"),
+        "Pure SSM / Mamba (7B)": ("#2ca02c", "s"),
+        "Parallel Hybrid (7B)": ("#d62728", "^"),
+        "Transformer (1B)": ("#1f77b4", "o"),
+        "Hybrid Mamba-Attn (1.5B)": ("#d62728", "^"),
+    }
+
+    for arch, grp in groups.items():
+        color, marker = palette.get(arch, ("#333333", "o"))
         ctxs = [g["context_length"] for g in grp]
         tps = [g["decode_tok_per_s"] for g in grp]
-        vram_growth = [g["kv_or_state_growth_mb"] for g in grp]
+        tps_err = [g.get("decode_tok_per_s_std", 0.0) for g in grp]
+        pstate = [g.get("analytical_persistent_state_mb", g["kv_or_state_growth_mb"]) for g in grp]
+        peak_grow = [g["kv_or_state_growth_mb"] for g in grp]
         j_tok = [g["joules_per_token_total"] for g in grp]
+        j_err = [g.get("joules_per_token_total_std", 0.0) for g in grp]
+        ttft = [g["ttft_ms"] for g in grp]
+        ttft_err = [g.get("ttft_std_ms", 0.0) for g in grp]
 
-        axes[0].plot(ctxs, tps, marker="o", linewidth=2, label=label)
-        axes[1].plot(ctxs, vram_growth, marker="s", linewidth=2, label=label)
-        axes[2].plot(ctxs, j_tok, marker="^", linewidth=2, label=label)
+        ax_tps.errorbar(ctxs, tps, yerr=tps_err, color=color, marker=marker, capsize=3, linewidth=1.8, label=arch)
+        ax_mem.plot(ctxs, pstate, color=color, marker=marker, linestyle="-", linewidth=1.8, label=f"{arch} (Persistent State)")
+        ax_mem.plot(ctxs, peak_grow, color=color, marker=marker, linestyle=":", linewidth=1.3, alpha=0.75, label=f"{arch} (Peak Prefill ΔVRAM)")
+        ax_eng.errorbar(ctxs, j_tok, yerr=j_err, color=color, marker=marker, capsize=3, linewidth=1.8, label=arch)
+        ax_ttft.errorbar(ctxs, ttft, yerr=ttft_err, color=color, marker=marker, capsize=3, linewidth=1.8, label=arch)
 
-    axes[0].set_title("Decode Throughput vs. Context Length")
-    axes[0].set_xlabel("Context Length (Tokens)")
-    axes[0].set_ylabel("Decode Throughput (tokens/s)")
-    axes[0].grid(True, alpha=0.3)
-    axes[0].legend(fontsize=8)
+    ax_tps.set_title("(a) Decode Throughput vs. Context Length (HF Eager)")
+    ax_tps.set_xlabel("Context Length (Tokens)")
+    ax_tps.set_ylabel("Decode Throughput (tokens/s ± std)")
+    ax_tps.grid(True, alpha=0.3)
+    ax_tps.legend(loc="best")
 
-    axes[1].set_title("KV Cache / SSM State Memory Growth")
-    axes[1].set_xlabel("Context Length (Tokens)")
-    axes[1].set_ylabel("Dynamic Memory Growth above Weights (MB)")
-    axes[1].grid(True, alpha=0.3)
+    ax_mem.set_title("(b) Persistent KV/SSM State vs. Peak Prefill ΔVRAM")
+    ax_mem.set_xlabel("Context Length (Tokens)")
+    ax_mem.set_ylabel("Memory Above Static Weights (MB)")
+    ax_mem.grid(True, alpha=0.3)
+    ax_mem.legend(loc="upper left", fontsize=7.0)
 
-    axes[2].set_title("Energy Efficiency (Joules / Output Token)")
-    axes[2].set_xlabel("Context Length (Tokens)")
-    axes[2].set_ylabel("Joules / Token (Lower is Better)")
-    axes[2].grid(True, alpha=0.3)
+    ax_eng.set_title("(c) Total Decode Energy per Token (HF Eager)")
+    ax_eng.set_xlabel("Context Length (Tokens)")
+    ax_eng.set_ylabel("Joules / Output Token (± std)")
+    ax_eng.grid(True, alpha=0.3)
 
-    if has_eval:
-        # Panel 4: Pareto Frontier — Energy (J/tok) vs. Perplexity (PPL)
-        for (arch, prec), grp in groups.items():
-            label = f"{arch} [{prec}]"
-            avg_j = sum(g["joules_per_token_total"] for g in grp) / len(grp)
-            ppl = grp[0].get("eval_ppl", 0.0)
-            axes[3].scatter([avg_j], [ppl], s=110, label=label)
-            axes[3].annotate(
-                f"{prec}\n({grp[0].get('ppl_delta_pct', 0.0):+.1f}%)",
-                (avg_j, ppl),
-                textcoords="offset points",
-                xytext=(6, 4),
-                fontsize=8,
-            )
-        axes[3].set_title("Pareto Frontier: Energy vs. Perplexity")
-        axes[3].set_xlabel("Mean Energy (Joules / Token)")
-        axes[3].set_ylabel("Corpus Perplexity (Lower is Better)")
-        axes[3].grid(True, alpha=0.3)
+    ax_ttft.set_title("(d) Prefill Time-To-First-Token (TTFT)")
+    ax_ttft.set_xlabel("Context Length (Tokens)")
+    ax_ttft.set_ylabel("TTFT (ms ± std)")
+    ax_ttft.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plot_file = out_dir / f"{path.stem}_charts.png"
-    plt.savefig(plot_file, dpi=200)
-    print(f"\nSaved publication chart to: {plot_file}")
+    for ext in ("png", "pdf"):
+        out_f = out_dir / f"{stem}_charts.{ext}"
+        plt.savefig(out_f, dpi=300 if ext == "png" else None, bbox_inches="tight")
+        print(f"Saved {out_f}")
+    plt.close(fig)
+
+
+def _plot_quant_ablation_2x2(plt, rows: list[dict], out_dir: Path, stem: str):
+    fig, axes = plt.subplots(2, 2, figsize=(9.5, 6.8))
+    ax_dppl, ax_kl = axes[0, 0], axes[0, 1]
+    ax_acc, ax_eng = axes[1, 0], axes[1, 1]
+
+    # Deduplicate per (arch_label, precision) for corpus metrics
+    by_arch_prec: dict[tuple[str, str], list[dict]] = {}
+    for r in rows:
+        by_arch_prec.setdefault((r["arch_label"], r["precision"]), []).append(r)
+
+    arch_order = ["Pure Transformer (7B)", "Pure SSM / Mamba (7B)", "Parallel Hybrid (7B)"]
+    if not any(a in [k[0] for k in by_arch_prec] for a in arch_order):
+        arch_order = sorted(set(k[0] for k in by_arch_prec))
+
+    prec_colors = {
+        "bf16": "#1f77b4",
+        "int4_uniform": "#ff7f0e",
+        "int4_mixed_ssm": "#2ca02c",
+    }
+
+    # Panel (a): Relative Perplexity Drift (ΔPPL% ± SE) vs. Static Weight Footprint (GiB)
+    # Colour = precision, marker = architecture; bf16 references are all at ΔPPL = 0.
+    arch_markers = {"Pure Transformer (7B)": "o", "Pure SSM / Mamba (7B)": "s", "Parallel Hybrid (7B)": "^"}
+    for (arch, prec), grp in by_arch_prec.items():
+        r0 = grp[0]
+        ax_dppl.errorbar(
+            [r0["weights_vram_mb"] / 1024.0],
+            [r0.get("ppl_delta_pct", 0.0)],
+            yerr=[r0.get("ppl_delta_se_pct", 0.0)],
+            fmt=arch_markers.get(arch, "o"),
+            markersize=7,
+            color=prec_colors.get(prec, "#333333"),
+            capsize=3,
+        )
+    from matplotlib.lines import Line2D
+
+    handles = [Line2D([], [], color=c, marker="o", linestyle="", label=p) for p, c in prec_colors.items()]
+    handles += [
+        Line2D([], [], color="black", marker=m, linestyle="", label=a.replace(" (7B)", ""))
+        for a, m in arch_markers.items()
+    ]
+    ax_dppl.legend(handles=handles, fontsize=7.0, loc="lower right", ncol=2)
+    ax_dppl.axhline(0.0, color="gray", linestyle="--", linewidth=1, alpha=0.6)
+    ax_dppl.set_title("(a) Within-Model Perplexity Drift (ΔPPL%) vs. Weights")
+    ax_dppl.set_xlabel("Static Weight Footprint (GiB)")
+    ax_dppl.set_ylabel("Relative ΔPPL vs. Own BF16 (% ± SE)")
+    ax_dppl.grid(True, alpha=0.3)
+
+    # Panel (b): Token-Level Logit KL Divergence KL(P_bf16 || Q) ± SE (quantized modes)
+    quant_precs = ["int4_uniform", "int4_mixed_ssm"]
+    x_pos = range(len(arch_order))
+    width = 0.34
+    for idx, prec in enumerate(quant_precs):
+        kls = []
+        kl_ses = []
+        for arch in arch_order:
+            grp = by_arch_prec.get((arch, prec), [])
+            kls.append(grp[0].get("kl_div_vs_bf16", 0.0) if grp else 0.0)
+            kl_ses.append(grp[0].get("kl_div_se", 0.0) if grp else 0.0)
+        offsets = [x + (idx - 0.5) * width for x in x_pos]
+        ax_kl.bar(offsets, kls, width=width, yerr=kl_ses, capsize=3, color=prec_colors[prec], label=prec, alpha=0.9)
+    ax_kl.set_xticks(list(x_pos))
+    ax_kl.set_xticklabels([a.replace(" (7B)", "") for a in arch_order], fontsize=8)
+    ax_kl.set_title("(b) Token-Level Logit KL(P_bf16 || Q) (± SE)")
+    ax_kl.set_ylabel("Mean KL Divergence (nats, Lower is Better)")
+    ax_kl.grid(True, axis="y", alpha=0.3)
+    ax_kl.legend()
+
+    # Panel (c): 200-Item Zero-Shot Benchmark Accuracy (% ± Binomial SE)
+    all_precs = ["bf16", "int4_uniform", "int4_mixed_ssm"]
+    w3 = 0.25
+    for idx, prec in enumerate(all_precs):
+        accs = []
+        acc_ses = []
+        for arch in arch_order:
+            grp = by_arch_prec.get((arch, prec), [])
+            accs.append(grp[0].get("task_accuracy_pct", 0.0) if grp else float("nan"))
+            acc_ses.append(grp[0].get("task_accuracy_se_pct", 0.0) if grp else 0.0)
+        offsets = [x + (idx - 1.0) * w3 for x in x_pos]
+        ax_acc.bar(offsets, accs, width=w3, yerr=acc_ses, capsize=3, color=prec_colors[prec], label=prec, alpha=0.9)
+    ax_acc.set_xticks(list(x_pos))
+    ax_acc.set_xticklabels([a.replace(" (7B)", "") for a in arch_order], fontsize=8)
+    ax_acc.set_ylim(0, 108)
+    ax_acc.set_title("(c) 200-Item Zero-Shot Accuracy (% ± SE, N=200)")
+    ax_acc.set_ylabel("Accuracy (%)")
+    ax_acc.grid(True, axis="y", alpha=0.3)
+    ax_acc.legend(loc="lower right")
+
+    # Panel (d): Long-Context Energy per Token (J/tok ± std) across Precisions
+    max_ctx = max(r["context_length"] for r in rows)
+    for idx, prec in enumerate(all_precs):
+        j_vals = []
+        j_errs = []
+        for arch in arch_order:
+            grp = [g for g in by_arch_prec.get((arch, prec), []) if g["context_length"] == max_ctx]
+            j_vals.append(grp[0]["joules_per_token_total"] if grp else float("nan"))
+            j_errs.append(grp[0].get("joules_per_token_total_std", 0.0) if grp else 0.0)
+        offsets = [x + (idx - 1.0) * w3 for x in x_pos]
+        ax_eng.bar(offsets, j_vals, width=w3, yerr=j_errs, capsize=3, color=prec_colors[prec], label=prec, alpha=0.9)
+    ax_eng.set_xticks(list(x_pos))
+    ax_eng.set_xticklabels([a.replace(" (7B)", "") for a in arch_order], fontsize=8)
+    ax_eng.set_title(f"(d) Total Decode Energy at N={max_ctx} (J/tok ± std)")
+    ax_eng.set_ylabel("Joules / Token (Lower is Better)")
+    ax_eng.grid(True, axis="y", alpha=0.3)
+    ax_eng.legend()
+
+    plt.tight_layout()
+    for ext in ("png", "pdf"):
+        out_f = out_dir / f"{stem}_charts.{ext}"
+        plt.savefig(out_f, dpi=300 if ext == "png" else None, bbox_inches="tight")
+        print(f"Saved {out_f}")
+    plt.close(fig)
 
 
 def generate_vllm_comparison_plots(path: Path, data: dict):
     hf_rows = [r for r in data.get("hf_roofline", []) if r["context_length"] in (512, 2048, 8192)]
     vllm_rows = data.get("vllm_cudagraph", [])
 
-    # Normalize APC-cached Step 2 decode window if raw MBU > 98% (when Step 1 & Step 2 shared prompt_token_ids)
-    for r in vllm_rows:
-        if r.get("mbu_pct", 0.0) > 95.0:
-            # Step 2 hit vLLM v1 Automatic Prefix Cache, so raw duration before TTFT subtraction
-            # (or with hybrid checkpointing) is the true decode window
-            arch = r["arch_label"]
-            ctx = r["context_length"]
-            if "Transformer" in arch:
-                true_dur = r["duration_s"] + (r["ttft_ms"] / 1000.0)
-                w_bytes = 14220.4 * (1024**2)
-                kv_bytes = (644.6 if ctx == 2048 else 2276.9) * (1024**2)
-            else:
-                true_dur = 7.663 if ctx == 2048 else 7.6912
-                w_bytes = 14477.3 * (1024**2)
-                kv_bytes = (391.9 if ctx == 2048 else 1307.2) * (1024**2)
-            tps = r["decode_tokens"] / true_dur
-            r["duration_s"] = round(true_dur, 4)
-            r["decode_tok_per_s"] = round(tps, 2)
-            r["tpot_ms"] = round(1000.0 / tps, 2)
-            r["total_joules"] = round(r["mean_watts"] * true_dur, 3)
-            r["joules_per_token_total"] = round(r["total_joules"] / r["decode_tokens"], 4)
-            dyn_w = max(r["mean_watts"] - r["idle_watts"], 0.0)
-            r["joules_per_token_dynamic"] = round((dyn_w * true_dur) / r["decode_tokens"], 4)
-            bw_gbps = ((w_bytes + kv_bytes) * tps) / 1e9
-            r["achieved_hbm_bw_gbps"] = round(bw_gbps, 2)
-            r["mbu_pct"] = round((bw_gbps / 300.0) * 100.0, 2)
-
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-    print("\n### vLLM CUDA-Graph vs. Hugging Face Eager Roofline MFU/MBU Summary\n")
+    print("\n### vLLM CUDA-Graph vs. Hugging Face Eager Roofline MFU/MBU Summary (n=5 Trials)\n")
     print(
-        "| Architecture | Context | Engine | TTFT (ms) | Decode (tok/s) | Energy Total (J/tok) | Energy Dyn (J/tok) | HBM BW (GB/s) | MBU (%) | MFU (%) |"
+        "| Architecture | Context | Engine | TTFT (ms) | Decode (tok/s) | Energy Total (J/tok) | Energy Dyn (J/tok) | GDDR6 BW (GB/s) | MBU (%) | MFU (%) |"
     )
     print(
         "| :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
@@ -194,11 +291,17 @@ def generate_vllm_comparison_plots(path: Path, data: dict):
 
     combined.sort(key=lambda x: (x["arch_label"], x["context_length"], x["engine"]))
     for r in combined:
+        ttft_s = f"{r['ttft_ms']:.1f}±{r.get('ttft_std_ms', 0.0):.1f}"
+        tps_s = f"{r['decode_tok_per_s']:.2f}±{r.get('decode_tok_per_s_std', 0.0):.2f}"
+        jt_s = f"{r['joules_per_token_total']:.4f}±{r.get('joules_per_token_total_std', 0.0):.4f}"
+        jd_s = f"{r['joules_per_token_dynamic']:.4f}±{r.get('joules_per_token_dynamic_std', 0.0):.4f}"
+        bw_val = r.get("achieved_mem_bw_gbps", r.get("achieved_hbm_bw_gbps", 0.0))
+        bw_s = f"{bw_val:.1f}±{r.get('achieved_mem_bw_gbps_std', 0.0):.1f}"
+        mbu_s = f"{r['mbu_pct']:.1f}±{r.get('mbu_pct_std', 0.0):.1f}%"
+        mfu_s = f"{r['mfu_pct']:.2f}%"
         print(
             f"| {r['arch_label']} | {r['context_length']} | `{r['engine']}` | "
-            f"{r['ttft_ms']:.1f} | **{r['decode_tok_per_s']:.2f}** | "
-            f"**{r['joules_per_token_total']:.4f}** | {r['joules_per_token_dynamic']:.4f} | "
-            f"{r['achieved_hbm_bw_gbps']:.1f} | **{r['mbu_pct']:.1f}%** | {r['mfu_pct']:.2f}% |"
+            f"{ttft_s} | **{tps_s}** | **{jt_s}** | {jd_s} | {bw_s} | **{mbu_s}** | {mfu_s} |"
         )
 
     try:
@@ -206,15 +309,19 @@ def generate_vllm_comparison_plots(path: Path, data: dict):
     except ImportError:
         return
 
+    _apply_pub_style(plt)
     out_dir = path.parent / "plots"
     out_dir.mkdir(exist_ok=True)
 
-    fig, axes = plt.subplots(1, 4, figsize=(22, 5))
-    fig.suptitle(
-        "TII Falcon 7B Triad: vLLM (CUDA Graphs) vs. Hugging Face Eager — Throughput, Energy & Roofline MBU%",
-        fontsize=13,
-        fontweight="bold",
-    )
+    fig, axes = plt.subplots(2, 2, figsize=(9.5, 6.8))
+    ax_tps, ax_mbu = axes[0, 0], axes[0, 1]
+    ax_eng, ax_ttft = axes[1, 0], axes[1, 1]
+
+    palette = {
+        "Pure Transformer (7B)": "#1f77b4",
+        "Pure SSM / Mamba (7B)": "#2ca02c",
+        "Parallel Hybrid (7B)": "#d62728",
+    }
 
     groups: dict[tuple[str, str], list[dict]] = {}
     for r in combined:
@@ -224,44 +331,53 @@ def generate_vllm_comparison_plots(path: Path, data: dict):
         grp.sort(key=lambda x: x["context_length"])
         ctxs = [g["context_length"] for g in grp]
         tps = [g["decode_tok_per_s"] for g in grp]
+        tps_e = [g.get("decode_tok_per_s_std", 0.0) for g in grp]
         j_tok = [g["joules_per_token_total"] for g in grp]
+        j_e = [g.get("joules_per_token_total_std", 0.0) for g in grp]
         mbu = [g["mbu_pct"] for g in grp]
+        mbu_e = [g.get("mbu_pct_std", 0.0) for g in grp]
         ttft = [g["ttft_ms"] for g in grp]
+        ttft_e = [g.get("ttft_std_ms", 0.0) for g in grp]
+
+        color = palette.get(arch, "#333333")
         style = "-" if eng == "vllm_cudagraph" else "--"
         marker = "o" if eng == "vllm_cudagraph" else "x"
-        label = f"{arch} [{eng}]"
+        short_arch = arch.replace(" (7B)", "")
+        label = f"{short_arch} [{'vLLM' if eng == 'vllm_cudagraph' else 'HF Eager'}]"
 
-        axes[0].plot(ctxs, tps, linestyle=style, marker=marker, linewidth=2, label=label)
-        axes[1].plot(ctxs, mbu, linestyle=style, marker=marker, linewidth=2, label=label)
-        axes[2].plot(ctxs, j_tok, linestyle=style, marker=marker, linewidth=2, label=label)
-        axes[3].plot(ctxs, ttft, linestyle=style, marker=marker, linewidth=2, label=label)
+        ax_tps.errorbar(ctxs, tps, yerr=tps_e, color=color, linestyle=style, marker=marker, capsize=3, linewidth=1.8, label=label)
+        ax_mbu.errorbar(ctxs, mbu, yerr=mbu_e, color=color, linestyle=style, marker=marker, capsize=3, linewidth=1.8, label=label)
+        ax_eng.errorbar(ctxs, j_tok, yerr=j_e, color=color, linestyle=style, marker=marker, capsize=3, linewidth=1.8, label=label)
+        ax_ttft.errorbar(ctxs, ttft, yerr=ttft_e, color=color, linestyle=style, marker=marker, capsize=3, linewidth=1.8, label=label)
 
-    axes[0].set_title("Decode Throughput (tok/s)")
-    axes[0].set_xlabel("Context Length")
-    axes[0].set_ylabel("Tokens / sec (Higher is Better)")
-    axes[0].grid(True, alpha=0.3)
-    axes[0].legend(fontsize=7.5)
+    ax_tps.set_title("(a) Decode Throughput: vLLM vs. HF Eager")
+    ax_tps.set_xlabel("Context Length (Tokens)")
+    ax_tps.set_ylabel("Tokens / sec (mean ± std)")
+    ax_tps.grid(True, alpha=0.3)
+    ax_tps.legend(fontsize=7.2, loc="best")
 
-    axes[1].set_title("Model Bandwidth Utilization (MBU %)")
-    axes[1].set_xlabel("Context Length")
-    axes[1].set_ylabel("% of L4 300 GB/s HBM Peak")
-    axes[1].axhline(100.0, color="gray", linestyle=":", alpha=0.6)
-    axes[1].grid(True, alpha=0.3)
+    ax_mbu.set_title("(b) GDDR6 Model Bandwidth Utilization (MBU %)")
+    ax_mbu.set_xlabel("Context Length (Tokens)")
+    ax_mbu.set_ylabel("% of L4 300 GB/s GDDR6 Peak (± std)")
+    ax_mbu.axhline(100.0, color="gray", linestyle=":", alpha=0.6)
+    ax_mbu.grid(True, alpha=0.3)
 
-    axes[2].set_title("Total Energy per Token (Joules/tok)")
-    axes[2].set_xlabel("Context Length")
-    axes[2].set_ylabel("Joules / Token (Lower is Better)")
-    axes[2].grid(True, alpha=0.3)
+    ax_eng.set_title("(c) Total Decode Energy per Token")
+    ax_eng.set_xlabel("Context Length (Tokens)")
+    ax_eng.set_ylabel("Joules / Token (mean ± std)")
+    ax_eng.grid(True, alpha=0.3)
 
-    axes[3].set_title("Prefill Time-To-First-Token (TTFT ms)")
-    axes[3].set_xlabel("Context Length")
-    axes[3].set_ylabel("TTFT (ms, Lower is Better)")
-    axes[3].grid(True, alpha=0.3)
+    ax_ttft.set_title("(d) Prefill Time-To-First-Token (TTFT)")
+    ax_ttft.set_xlabel("Context Length (Tokens)")
+    ax_ttft.set_ylabel("TTFT (ms, mean ± std)")
+    ax_ttft.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plot_file = out_dir / f"{path.stem}_charts.png"
-    plt.savefig(plot_file, dpi=200)
-    print(f"\nSaved publication chart to: {plot_file}")
+    for ext in ("png", "pdf"):
+        out_f = out_dir / f"{path.stem}_charts.{ext}"
+        plt.savefig(out_f, dpi=300 if ext == "png" else None, bbox_inches="tight")
+        print(f"Saved {out_f}")
+    plt.close(fig)
 
 
 if __name__ == "__main__":
