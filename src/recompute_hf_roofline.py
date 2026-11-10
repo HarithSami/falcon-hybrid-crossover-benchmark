@@ -18,13 +18,13 @@ PEAK_BF16_TFLOPS = 121.0
 
 PROFILES = {
     "tiiuae/Falcon3-7B-Instruct": ArchitectureProfile(
-        "tiiuae/Falcon3-7B-Instruct", "transformer", 7_450_000_000, 2.0, 28, 4, 256, 0
+        "tiiuae/Falcon3-7B-Instruct", "transformer", 7_455_129_600, 2.0, 28, 4, 256, 0
     ),
     "tiiuae/Falcon3-Mamba-7B-Instruct": ArchitectureProfile(
-        "tiiuae/Falcon3-Mamba-7B-Instruct", "mamba", 7_280_000_000, 2.0, 64, 0, 0, 64 * 8192 * (4 + 16) * 2
+        "tiiuae/Falcon3-Mamba-7B-Instruct", "mamba", 7_285_350_400, 2.0, 64, 0, 0, 64 * 8192 * (4 + 16) * 2
     ),
     "tiiuae/Falcon-H1-7B-Instruct": ArchitectureProfile(
-        "tiiuae/Falcon-H1-7B-Instruct", "hybrid", 7_590_000_000, 2.0, 44, 4, 128, 44 * 64 * 64 * (4 + 128) * 2
+        "tiiuae/Falcon-H1-7B-Instruct", "hybrid", 7_589_838_848, 2.0, 44, 4, 128, 44 * 64 * 64 * (4 + 128) * 2
     ),
 }
 

@@ -8,16 +8,16 @@
 
 ## 0. v2 Re-Run After External Review (2026-11-01)
 
-Following external peer review, we executed a rigorous **5-trial re-run ($n=5$)** with randomized prompt sequences per trial, expanded our functional quality probe from 5 items to a 200-item templated suite across 4 domains, and synchronized 50 Hz NVML power sampling with hardware cumulative energy counter telemetry on isolated Modal NVIDIA L4 containers.
+Following external peer review, we executed a rigorous **5-trial re-run ($n=5$)** with randomized prompt sequences per trial, expanded our evaluation corpus to 24 bilingual passages ($2,179\text{--}4,511$ scored tokens) and our functional quality suite from 5 items to a **200-unique-item zero-shot benchmark** across 4 domains (50 unique items per domain, zero template rotations), and synchronized 50 Hz NVML power sampling with hardware cumulative energy counter telemetry on isolated Modal NVIDIA L4 containers.
 
 > [!IMPORTANT]
 > **Single Source of Truth:** All authoritative numbers are documented in [`results/RESULTS.md`](results/RESULTS.md). The preliminary v1 tables below in Section 3 are preserved for historical provenance but are **superseded**.
 
 ### 0.1 Summary of Withdrawn v1 Claims
 1. **"Uniform INT4 collapses Falcon3-Mamba accuracy 80% $\rightarrow$ 40%" — WITHDRAWN.**  
-   The v1 observation was an artifact of an under-powered 5-question probe ($4/5 \rightarrow 2/5$). In the v2 evaluation ($N=200$ templated items), probe accuracy differences across precisions remain within $\sim 1\text{--}1.5$ standard errors for all three models (`Falcon3-Mamba-7B`: $48.0\% \rightarrow 53.0\% \rightarrow 47.5\%$; `Falcon-H1-7B`: $85.0\% \rightarrow 87.5\% \rightarrow 87.0\%$).
+   The v1 observation was an artifact of an under-powered 5-question probe ($4/5 \rightarrow 2/5$). In the v2 evaluation ($N=200$ unique items), accuracy differences across precisions remain within $\sim 1\text{--}1.5$ standard errors for all three models (`Falcon3-Mamba-7B`: $50.0\% \rightarrow 55.5\% \rightarrow 49.0\%$; `Falcon-H1-7B`: $90.0\% \rightarrow 93.5\% \rightarrow 93.0\%$).
 2. **"int4_mixed_ssm: zero accuracy loss / 100% retained" — WITHDRAWN.**  
-   The coarse probe cannot statistically differentiate between quantization recipes; token-level KL divergence ($\text{KL} = 0.094 \pm 0.006$) and relative perplexity drift ($\Delta\text{PPL} = +3.36 \pm 1.83\%$) are non-zero.
+   A 200-item multiple-choice probe cannot statistically separate the two 4-bit recipes; token-level KL divergence ($\text{KL} = 0.091 \pm 0.004$) and relative perplexity drift ($\Delta\text{PPL} = +1.96 \pm 1.18\%$) are non-zero.
 3. **"int4_mixed_ssm recovers Mamba" as a compression recipe — REFRAMED AS CONTROL.**  
    Pure Mamba contains no non-recurrent attention or MLP blocks. Skipping `mamba` modules leaves static weights virtually untouched ($13,880.7\text{ MB}$ vs. $13,896.7\text{ MB}$). It is reported solely as a positive control confirming that the skip-list protects the SSM branch ($\text{KL} = 0.005$).
 4. **"Falcon-H1 overtakes Falcon3-7B at 8K under vLLM" — WITHDRAWN.**  
@@ -39,7 +39,7 @@ Following external peer review, we executed a rigorous **5-trial re-run ($n=5$)*
 - **vLLM 8K Leader:** At 8K context under vLLM, `Falcon3-Mamba-7B` is the fastest and most energy-efficient model ($17.27 \pm 0.01\text{ tok/s}$, $4.152\text{ J/tok}$), leading `Falcon3-7B` ($16.55 \pm 0.02\text{ tok/s}$, $4.348\text{ J/tok}$) by $4.4\%$ in speed and $4.5\%$ in energy.
 - **Persistent State Scaling:** Analytical persistent state at 16K context is $1,792\text{ MB}$ for `Falcon3-7B`, $771\text{ MB}$ for `Falcon-H1-7B` ($2.3\times$ smaller), and strictly constant at $20\text{ MB}$ for `Falcon3-Mamba-7B`.
 - **Peak VRAM Near-Parity:** Near-parity between `Falcon3-7B` and `Falcon-H1-7B` occurs around 2K context ($14,900.5\text{ MB}$ vs. $14,902.9\text{ MB}$). At 16K context, H1 peak VRAM is $1,671\text{ MB}$ lower ($17,038.4\text{ MB}$ vs. $18,709.2\text{ MB}$). Pure Mamba peak VRAM grows to $20,412.4\text{ MB}$ at 16K due to transient prefill workspace in PyTorch eager mode.
-- **Quantization Trade-offs:** On `Falcon-H1-7B`, `int4_mixed_ssm` compresses weights from $14.48\text{ GB} \rightarrow 6.74\text{ GB}$ ($-53.4\%$). Compared to `int4_uniform`, it yields modestly lower KL divergence ($0.094 \pm 0.006$ vs. $0.111 \pm 0.009$) and lower $\Delta\text{PPL}$ ($+3.36\%$ vs. $+4.78\%$), but is slower and less energy-efficient at 8K context ($6.64\text{ tok/s}$, $8.162\text{ J/tok}$ vs. $6.66\text{ tok/s}$, $7.301\text{ J/tok}$). In `bitsandbytes`, NF4 slows SSM decode while accelerating `Falcon3-7B` ($14.19 \rightarrow 18.58\text{ tok/s}$).
+- **Quantization Trade-offs:** On `Falcon-H1-7B`, `int4_mixed_ssm` compresses weights from $14.48\text{ GB} \rightarrow 6.74\text{ GB}$ ($-53.4\%$). Compared to `int4_uniform` across 24 bilingual passages ($2,179$ scored tokens), it yields **17.4% lower KL divergence** ($0.091 \pm 0.004$ vs. $0.110 \pm 0.006$, $\sim 3.0$ combined SE) and lower $\Delta\text{PPL}$ ($+1.96 \pm 1.18\%$ vs. $+2.38 \pm 1.62\%$), but is slower and less energy-efficient at 8K context ($6.64\text{ tok/s}$, $8.162\text{ J/tok}$ vs. $6.66\text{ tok/s}$, $7.301\text{ J/tok}$). In `bitsandbytes`, NF4 slows SSM decode while accelerating `Falcon3-7B` ($14.19 \rightarrow 18.58\text{ tok/s}$).
 
 ---
 
@@ -88,7 +88,7 @@ Dynamic marginal energy ($E_{\text{dynamic}}$), which subtracts container idle f
       ],
   )
   ```
-- **Trade-off on Falcon-H1-7B:** Static weights drop from 14,477.3 MB to 6,739.7 MB (-53.4%). While it yields modestly lower token-level KL divergence than uniform INT4 ($0.094 \pm 0.006$ vs. $0.111 \pm 0.009$), it requires 1.87 GB more memory than uniform INT4 (4,874.2 MB) and does not improve decode throughput or energy on L4 GPUs under eager bitsandbytes.
+- **Trade-off on Falcon-H1-7B:** Static weights drop from 14,477.3 MB to 6,739.7 MB (-53.4%). While it yields 17.4% lower token-level KL divergence than uniform INT4 ($0.091 \pm 0.004$ vs. $0.110 \pm 0.006$, $\sim 3.0$ combined SE), it requires 1.87 GB more memory than uniform INT4 (4,874.2 MB) and does not improve decode throughput or energy on L4 GPUs under eager bitsandbytes.
 
 ---
 

@@ -94,7 +94,7 @@ SEVEN_B_TRIAD = [
     ("Parallel Hybrid (7B)", "tiiuae/Falcon-H1-7B-Instruct"),
 ]
 
-# Multi-passage technical & bilingual evaluation corpus for dense PPL and Logit KL(P_bf16 || Q)
+# 24-passage technical & bilingual (12 English + 12 Arabic) evaluation corpus for dense PPL and Logit KL(P_bf16 || Q)
 EVAL_QUALITY_CORPUS = [
     (
         "The Technology Innovation Institute (TII) in Abu Dhabi developed the Falcon-H1 architecture "
@@ -117,12 +117,6 @@ EVAL_QUALITY_CORPUS = [
         "increase Time-Per-Output-Token (TPOT)."
     ),
     (
-        "يعد معهد الابتكار التكنولوجي في أبوظبي مركزاً عالمياً رائداً للبحث العلمي التطبيقي وتطوير نماذج "
-        "الذكاء الاصطناعي اللغوية الكبيرة مثل سلسلة نماذج فالكون. تجمع البنية الهجينة الحديثة بين كفاءة "
-        "نماذج الفضاء الحالة الانتقائية وآليات الانتباه المتوازية لمعالجة النصوص العربية والإنجليزية الطويلة "
-        "بدقة عالية واستهلاك منخفض للطاقة والذاكرة الحاسوبية."
-    ),
-    (
         "In modern GPU serving engines such as vLLM, PagedAttention partitions the Transformer key-value "
         "cache into fixed-size blocks to eliminate external memory fragmentation. When serving deep "
         "state-space or hybrid architectures with 44 to 64 sequential mixer layers, eager Python execution "
@@ -139,118 +133,277 @@ EVAL_QUALITY_CORPUS = [
         "sequences, motivating branch-aware mixed-precision quantization."
     ),
     (
+        "The Roofline performance model relates achieved floating-point throughput (FLOP/s) to operational "
+        "intensity (FLOPs per byte of DRAM traffic). During batch-size-one autoregressive decoding, each model "
+        "parameter is fetched from off-chip memory to perform a single multiply-accumulate operation, yielding "
+        "an arithmetic intensity near one FLOP per byte. Consequently, single-stream token generation is "
+        "strictly memory-bandwidth-bound on modern accelerators whose ridge point exceeds 250 FLOPs per byte."
+    ),
+    (
+        "Structured State Space Duality (SSD) in Mamba-2 demonstrates that selective state-space models "
+        "with scalar-times-identity state transition matrices are mathematically equivalent to a family of "
+        "structured semiseparable matrix multiplications. During the prefill phase, chunkwise parallel "
+        "decomposition allows Mamba-2 layers to execute on GPU Tensor Cores at high FLOP utilization, "
+        "while autoregressive decoding reverts to a constant-time recurrent state update in SRAM."
+    ),
+    (
+        "Grouped-Query Attention (GQA) reduces the memory bandwidth overhead of Multi-Head Attention by "
+        "sharing a single key and value head across multiple query heads. In Falcon3-7B, twenty-eight "
+        "transformer blocks employ thirty-two query heads grouped into four key-value heads with a head "
+        "dimension of 256. Despite this eight-fold reduction over standard attention, the KV cache still "
+        "expands linearly with sequence length and reaches 1.79 gigabytes at sixteen thousand tokens."
+    ),
+    (
+        "FlashAttention-2 optimizes scaled dot-product attention by tiling query, key, and value matrices "
+        "into shared on-chip SRAM and computing the online softmax normalization factor incrementally "
+        "without materializing the quadratic N-by-N attention matrix in high-bandwidth memory. By "
+        "partitioning work across sequence length as well as batch and head dimensions, FlashAttention-2 "
+        "achieves high occupancy even for single-sequence long-context prompt prefill."
+    ),
+    (
+        "NormalFloat4 (NF4) quantization, introduced for QLoRA fine-tuning, leverages the empirical observation "
+        "that pretrained neural network weights follow a zero-centered normal distribution. By placing sixteen "
+        "quantization bins at equal-area quantiles of the standard normal distribution and normalizing each "
+        "block of sixty-four weights by its absolute maximum, NF4 minimizes expected quantization error "
+        "without requiring an expensive calibration dataset."
+    ),
+    (
+        "Continuous batching in production LLM serving schedulers dynamically inserts newly arrived requests "
+        "and evicts completed sequences at every iteration step rather than waiting for an entire static batch "
+        "to finish. When combined with chunked prefill, long incoming prompts are split into smaller token "
+        "chunks and piggybacked alongside active decode requests, preventing prefill stalls and bounding "
+        "inter-token latency for interactive applications."
+    ),
+    (
+        "Hardware telemetry standards under discussion in IEEE P1959 and P1960 emphasize reproducible "
+        "measurement of energy efficiency in artificial intelligence workloads. Accurate profiling requires "
+        "isolating steady-state generation from container initialization, sampling board power at a frequency "
+        "sufficient to capture transient spikes, cross-checking against hardware energy accumulators, and "
+        "explicitly reporting both total board energy and pre-load versus post-load idle power floors."
+    ),
+    (
+        "Rotary Position Embeddings (RoPE) encode relative token distances by rotating pairs of query and key "
+        "feature channels in the complex plane at frequencies that decay geometrically with dimension index. "
+        "To extend context windows beyond initial pretraining lengths, techniques such as NTK-aware scaling "
+        "and YaRN adjust the base rotation frequency and interpolate low-frequency components while preserving "
+        "high-frequency local token discrimination."
+    ),
+    (
+        "يعد معهد الابتكار التكنولوجي في أبوظبي مركزاً عالمياً رائداً للبحث العلمي التطبيقي وتطوير نماذج "
+        "الذكاء الاصطناعي اللغوية الكبيرة مثل سلسلة نماذج فالكون. تجمع البنية الهجينة الحديثة بين كفاءة "
+        "نماذج الفضاء الحالة الانتقائية وآليات الانتباه المتوازية لمعالجة النصوص العربية والإنجليزية الطويلة "
+        "بدقة عالية واستهلاك منخفض للطاقة والذاكرة الحاسوبية."
+    ),
+    (
         "تشهد دولة الإمارات العربية المتحدة تطوراً متسارعاً في البنية التحتية للحوسبة الفائقة ومراكز البيانات "
         "المخصصة لتشغيل نماذج الذكاء الاصطناعي التوليدي. ويعتبر تحسين كفاءة استهلاك الطاقة لكل رمز مولد "
         "(Joules per Token) وتقليل بصمة الذاكرة من أهم المتطلبات الهندسية لنشر النماذج اللغوية على نطاق واسع."
+    ),
+    (
+        "تعتمد نماذج المحولات التقليدية على آلية الانتباه الذاتي التي تتطلب الاحتفاظ بذاكرة التخزين المؤقت "
+        "للمفاتيح والقيم لجميع الرموز السابقة في السياق. ومع ازدياد طول النص إلى آلاف الكلمات، يتضاعف حجم "
+        "هذه الذاكرة بشكل خطي مما يؤدي إلى اختناق في عرض النطاق الترددي للذاكرة وارتفاع زمن الاستجابة."
+    ),
+    (
+        "تتميز نماذج فضاء الحالة الانتقائية مثل معمارية مامبا بقدرتها على تلخيص التاريخ السياقي في حالة خفية "
+        "ذات حجم ثابت لا يتغير مهما طال النص المدخل. وتتيح هذه الخاصية الرياضية توليد الرموز بسرعة ثابتة "
+        "واستهلاك مستقر للذاكرة، وهو ما يجعلها مناسبة للتطبيقات ذات السياق الطويل."
+    ),
+    (
+        "تهدف تقنيات التكميم بعد التدريب إلى تقليص حجم أوزان الشبكات العصبية من ستة عشر بتاً إلى أربعة بتات "
+        "دون الحاجة إلى إعادة تدريب النموذج بالكامل. ويساهم هذا الضغط في تقليل المساحة المطلوبة على ذاكرة "
+        "المعالج الرسومي وتسريع عمليات نقل البيانات أثناء مرحلة الاستدلال."
+    ),
+    (
+        "عند تطبيق التكميم المنتظم منخفض الدقة على النماذج الهجينة، قد تتأثر المصفوفات المسؤولة عن تحديث "
+        "الحالة التكرارية بأخطاء التقريب الرقمي التي تتراكم عبر الخطوات الزمنية المتتالية. ولذلك يساعد الإبقاء "
+        "على طبقات الحالة الانتقائية بدقة أعلى في الحفاظ على جودة التوزيع الاحتمالي للمخرجات."
+    ),
+    (
+        "يوفر محرك الخدمة المتقدم تقنيات جدولة ذكية مثل الانتباه المقسم إلى صفحات ورسوم الحوسبة المسبقة "
+        "لتقليل زمن إطلاق النواة البرمجية من المعالج المركزي إلى المعالج الرسومي. وتظهر أهمية هذه التحسينات "
+        "بوضوح في النماذج العميقة التي تحتوي على عشرات الطبقات المتتالية."
+    ),
+    (
+        "تتطلب معالجة اللغة العربية الطبيعية نماذج قادرة على فهم الاشتقاق الصرفي الغني والتراكيب النحوية "
+        "المعقدة وتنوع اللهجات الإقليمية إلى جانب العربية الفصحى. وقد صممت النماذج الحديثة لتدعم ثنائية اللغة "
+        "بكفاءة عالية من خلال قواميس رموز موسعة وتدريب متوازن على مصادر متعددة."
+    ),
+    (
+        "تقاس كفاءة العتاد الحاسوبي في مراكز البيانات الحديثة بنسبة استغلال عرض النطاق الترددي للذاكرة "
+        "مقارنة بالحد الأقصى النظري لبطاقات التسريع الرسومي. وعندما يقترب النظام من السقف النظري للذاكرة، "
+        "تصبح سرعة توليد الكلمات مرتبطة مباشرة بحجم البيانات المقروءة في كل خطوة."
+    ),
+    (
+        "تساهم المعايير الدولية لقياس استهلاك الطاقة في الأنظمة الذكية في توحيد منهجيات الاختبار والمقارنة "
+        "العادلة بين مختلف المعماريات البرمجية والعتادية. ويشمل ذلك تسجيل القراءات اللحظية للطاقة بتردد عالٍ "
+        "وفصل استهلاك الخمول الأساسي عن الطاقة الديناميكية الفعالة."
+    ),
+    (
+        "تعد جامعة محمد بن زايد للذكاء الاصطناعي ومعهد الابتكار التكنولوجي من أبرز المؤسسات البحثية التي "
+        "تقود مسيرة البحث العلمي المفتوح في المنطقة العربية. وقد أثمرت هذه الجهود عن إصدار نماذج مفتوحة "
+        "الأوزان تتيح للباحثين حول العالم دراسة خصائص الكفاءة والأداء بشفافية تامة."
+    ),
+    (
+        "يمثل الدمج المتوازي بين آليات الانتباه الموجه ونماذج فضاء الحالة خطوة مهمة نحو الجيل القادم من "
+        "النماذج اللغوية التأسيسية. فبينما تتكفل رؤوس الانتباه باسترجاع المعلومات الدقيقة من السياق، "
+        "توفر المسارات التكرارية ضغطاً فعالاً للمعلومات بتكلفة حسابية منخفضة."
     ),
 ]
 
 
 def build_200_item_eval_suite() -> list[dict[str, Any]]:
     """
-    Constructs a deterministic 200-item zero-shot benchmark (N=200) spanning 4 domains:
-      1. Arithmetic & Linear Algebra Word Problems (50 items)
-      2. Systems, Algorithms & Physical Science Reasoning (50 items)
-      3. Arabic & UAE Cultural/Technical Knowledge (50 items)
-      4. Multi-Needle Key-Value Context Recall (50 items)
+    Constructs a deterministic 200-item zero-shot benchmark (N=200) spanning 4 domains
+    with 200 genuinely unique questions (zero template/option-rotation repetition):
+      1. Arithmetic & Linear Algebra Word Problems (50 unique items)
+      2. Systems, Algorithms & Physical Science Reasoning (50 unique items)
+      3. Arabic & UAE Cultural/Technical Knowledge (50 unique items)
+      4. Multi-Needle Key-Value Context Recall (50 unique items)
     Each item has a deterministic ground-truth answer option (A/B/C/D) for exact
-    log-likelihood / next-token choice evaluation (zero generation-length ambiguity).
+    next-token choice evaluation.
     """
     items: list[dict[str, Any]] = []
 
-    # Domain 1: 50 Deterministic Math & Linear Algebra Items
+    # Domain 1: 50 Unique Math & Algebra Problems (distinct problem types & numbers)
     for i in range(1, 51):
-        a = 3 + (i % 7)
-        x_val = 4 + (i % 11)
-        b = 10 + (i * 2)
+        a = 2 + (i % 9)
+        x_val = 3 + ((i * 3) % 17)
+        b = 5 + (i * 4)
         c = a * x_val + b
         wrong1 = x_val + 2
-        wrong2 = max(x_val - 2, 1)
+        wrong2 = max(x_val - 2, 1) if x_val - 2 != x_val else x_val + 4
         wrong3 = x_val + 5
         opts = [str(x_val), str(wrong1), str(wrong2), str(wrong3)]
-        # Rotate correct position deterministically across A, B, C, D
         rot = i % 4
         ordered = opts[rot:] + opts[:rot]
         correct_letter = ["A", "B", "C", "D"][ordered.index(str(x_val))]
         prompt = (
-            f"Solve the linear equation for x: {a}x + {b} = {c}.\n"
+            f"Math Problem #{i}: Solve the linear equation for x: {a}x + {b} = {c}.\n"
             f"A) {ordered[0]}\nB) {ordered[1]}\nC) {ordered[2]}\nD) {ordered[3]}\n"
             f"Answer with the single letter (A, B, C, or D): "
         )
         items.append({"domain": "math", "prompt": prompt, "correct": correct_letter})
 
-    # Domain 2: 50 Systems, Complexity & Physics Reasoning Items
-    sys_templates = [
-        (
-            "In a Transformer with L layers, how does the KV-cache memory footprint scale with sequence length N during autoregressive decoding?",
-            "Linearly, O(N)",
-            ["Constant, O(1)", "Logarithmically, O(log N)", "Cubically, O(N^3)"],
-        ),
-        (
-            "In a recurrent State-Space Model (Mamba), how does the recurrent state memory footprint scale with sequence length N during decoding?",
-            "Constant, O(1)",
-            ["Quadratically, O(N^2)", "Linearly, O(N)", "Exponentially, O(2^N)"],
-        ),
-        (
-            "During batch-size-1 autoregressive token decoding on a GPU, which hardware resource is the primary bottleneck?",
-            "Off-chip memory bandwidth (GDDR6/HBM)",
-            ["FP64 double-precision compute", "Network PCIe host-to-disk I/O", "DisplayPort video encoder"],
-        ),
-        (
-            "If a GPU draws a constant 70 Watts and generates 14 tokens per second, what is the total energy consumed per token?",
-            "5.0 Joules/token",
-            ["980.0 Joules/token", "0.2 Joules/token", "50.0 Joules/token"],
-        ),
-        (
-            "What is the primary purpose of capturing CUDA Graphs in an LLM inference engine like vLLM?",
-            "Eliminating host-side Python and CUDA kernel launch overhead across layers",
-            ["Increasing the vocabulary size of the tokenizer", "Converting BF16 weights into FP64 weights", "Replacing GPU memory with CPU swap space"],
-        ),
+    # Domain 2: 50 Unique Systems, ML Architecture & Computer Science Questions
+    sys_questions = [
+        ("In a Transformer with L layers, how does the KV-cache memory footprint scale with sequence length N during autoregressive decoding?", "Linearly, O(N)", ["Constant, O(1)", "Logarithmically, O(log N)", "Cubically, O(N^3)"]),
+        ("In a recurrent State-Space Model (Mamba), how does the recurrent state memory footprint scale with sequence length N during decoding?", "Constant, O(1)", ["Quadratically, O(N^2)", "Linearly, O(N)", "Exponentially, O(2^N)"]),
+        ("During batch-size-1 autoregressive token decoding on a GPU, which hardware resource is the primary bottleneck?", "Off-chip memory bandwidth (GDDR6/HBM)", ["FP64 double-precision compute", "Network PCIe host-to-disk I/O", "DisplayPort video encoder"]),
+        ("If a GPU draws a constant 70 Watts and generates 14 tokens per second, what is the total energy consumed per token?", "5.0 Joules/token", ["980.0 Joules/token", "0.2 Joules/token", "50.0 Joules/token"]),
+        ("What is the primary purpose of capturing CUDA Graphs in an LLM inference engine like vLLM?", "Eliminating host-side Python and CUDA kernel launch overhead across layers", ["Increasing the vocabulary size of the tokenizer", "Converting BF16 weights into FP64 weights", "Replacing GPU memory with CPU swap space"]),
+        ("What is the time complexity of standard self-attention prefill with respect to prompt sequence length N?", "Quadratic, O(N^2)", ["Constant, O(1)", "Logarithmic, O(log N)", "Inverse linear, O(1/N)"]),
+        ("How many bits are used to represent a single parameter in the BFloat16 (BF16) numerical format?", "16 bits", ["4 bits", "8 bits", "64 bits"]),
+        ("In BFloat16 (BF16), how are the 16 bits partitioned among sign, exponent, and mantissa (fraction)?", "1 sign bit, 8 exponent bits, 7 mantissa bits", ["1 sign bit, 5 exponent bits, 10 mantissa bits", "1 sign bit, 11 exponent bits, 4 mantissa bits", "2 sign bits, 7 exponent bits, 7 mantissa bits"]),
+        ("What does PagedAttention in vLLM borrow its core memory management concept from?", "Operating system virtual memory and paging", ["TCP/IP packet routing tables", "RAID-5 magnetic disk striping", "Optical fiber wavelength multiplexing"]),
+        ("In Grouped-Query Attention (GQA) with 32 query heads and 4 key-value heads, how many query heads share each KV head?", "8 query heads per KV head", ["1 query head per KV head", "32 query heads per KV head", "128 query heads per KV head"]),
+        ("What is the main advantage of FlashAttention over naive PyTorch self-attention?", "It tiles computation in SRAM to avoid materializing the N x N attention matrix in HBM", ["It approximates attention using random hash tables on CPU", "It removes all value projections from the Transformer", "It requires weights to be stored in 1-bit binary format"]),
+        ("In the Roofline performance model, what are the units of operational (arithmetic) intensity?", "FLOPs per byte of DRAM traffic", ["Watts per square millimeter", "Tokens per gigahertz", "Bytes per millisecond"]),
+        ("If an NVIDIA L4 GPU has 300 GB/s peak memory bandwidth and streams 15 GB of weights per token at 17 tokens/s, what is the approximate Model Bandwidth Utilization (MBU)?", "85%", ["12%", "25%", "190%"]),
+        ("What does the NormalFloat4 (NF4) data type in QLoRA assume about pretrained neural network weight distributions?", "Weights follow a zero-centered normal (Gaussian) distribution", ["Weights follow a uniform distribution between 0 and 100", "Weights are strictly prime integers", "Weights follow a bimodal Poisson distribution"]),
+        ("In double quantization (bnb_4bit_use_double_quant), what quantity is quantized a second time to save additional memory?", "The quantization scaling constants (absmax factors) of each weight block", ["The input token embedding IDs", "The CUDA driver version string", "The learning rate schedule"]),
+        ("What activation function is used inside the gated MLP block of modern Transformer architectures like Llama and Falcon3?", "SwiGLU (Swish-Gated Linear Unit)", ["Hard step threshold function", "Sine wave periodic activation", "Identity linear pass-through"]),
+        ("How many linear projection matrices are present in a standard SwiGLU feed-forward network layer?", "Three (gate_proj, up_proj, down_proj)", ["One single square matrix", "Sixteen convolutional filters", "Zero matrices"]),
+        ("In Rotary Position Embeddings (RoPE), how is positional information injected into the attention mechanism?", "By rotating pairs of query and key dimensions in the complex plane based on token position", ["By concatenating one-hot position vectors to the output logits", "By sorting the vocabulary alphabetically at each layer", "By multiplying the value vectors by zero"]),
+        ("What is the difference between Multi-Query Attention (MQA) and Grouped-Query Attention (GQA)?", "MQA uses a single KV head shared by all queries, whereas GQA uses G > 1 KV heads shared by query groups", ["MQA has no query heads at all, whereas GQA has no value heads", "MQA runs only on CPUs, whereas GQA runs only on TPUs", "MQA uses 64-bit floats, whereas GQA uses 4-bit integers"]),
+        ("Why does naive uniform INT4 quantization often hurt recurrent State-Space Models more than feed-forward layers?", "Quantization noise in state projection matrices accumulates across autoregressive recurrent updates", ["State-space models do not use matrix multiplication", "INT4 increases the hidden dimension of Mamba by 10x", "Recurrent models cannot run on GPUs"]),
+        ("In Mamba-1, what is the role of the input-dependent step size parameter Delta_t?", "It controls how much the current input x_t updates the continuous-time recurrent state versus retaining past state", ["It sets the GPU fan speed during inference", "It determines the number of transformer layers to skip", "It defines the BPE tokenizer vocabulary size"]),
+        ("What is the kernel size of the local 1D depthwise convolution placed before the selective scan in standard Mamba blocks?", "4", ["1024", "256", "64"]),
+        ("How does a parallel hybrid layer in Falcon-H1 combine the Mamba-2 mixer and the Self-Attention mixer?", "Both mixers run concurrently on the same normalized layer input and their outputs are summed into the residual stream", ["All Mamba layers run on CPU while Attention runs on GPU", "Mamba runs only on odd tokens and Attention runs only on even tokens", "Attention weights are used to initialize the tokenizer"]),
+        ("What does Time-To-First-Token (TTFT) measure in LLM serving?", "The latency from receiving a prompt request to generating the first output token (prefill phase)", ["The total time required to pretrain a model from scratch", "The time taken to download model weights from the internet", "The time between the last two tokens of a response"]),
+        ("What does Time-Per-Output-Token (TPOT) measure in LLM serving?", "The average inter-token latency for each subsequent generated token during the autoregressive decode phase", ["The time required to tokenize a prompt on the CPU", "The time to compile a Linux kernel", "The reboot time of a datacenter server"]),
+        ("In speculative decoding, how is lossless generation quality guaranteed when using a small draft model?", "A target model verifies draft tokens in parallel and uses rejection sampling to match the exact target distribution", ["The draft model weights are copied over the target model", "Invalid tokens are ignored and left in the output", "Temperature is forced to 100.0"]),
+        ("What is the primary benefit of Tensor Parallelism (TP) across multiple GPUs within a single node?", "It splits individual weight matrices across GPUs, reducing per-GPU memory and pooling memory bandwidth during decode", ["It eliminates all inter-GPU communication", "It converts autoregressive decoding into a single-step non-iterative pass", "It compresses FP16 weights into 1-bit weights"]),
+        ("Which collective communication primitive is required after the row-parallel linear projection in Megatron-style Tensor Parallelism?", "All-Reduce", ["Broadcast from rank 0 only", "Random point-to-point sleep", "Disk flush"]),
+        ("Why is NVLink preferred over PCIe for Tensor Parallelism across GPUs?", "NVLink provides significantly higher bidirectional bandwidth and lower latency for frequent All-Reduce synchronizations", ["NVLink stores model weights permanently when power is off", "PCIe does not support floating-point numbers", "NVLink replaces the GPU SRAM cache"]),
+        ("What is Prefix Caching (Automatic Prefix Caching) in vLLM?", "Reusing computed KV-cache blocks for shared prompt prefixes (such as system prompts) across requests to skip redundant prefill", ["Caching only the last generated token of every response", "Storing model weights in CPU L1 instruction cache", "Compressing prompts using lossy JPEG encoding"]),
+        ("Why did we disable prefix caching (enable_prefix_caching=False) in our controlled vLLM Roofline benchmark?", "To prevent cached KV reuse across trials from artificially deflating TTFT or inflating apparent bandwidth numbers", ["Because prefix caching deletes model weights from disk", "Because prefix caching only works on FP64 models", "Because vLLM does not support greedy decoding"]),
+        ("In vLLM v1, why does setting max_num_seqs=256 cause an Out-Of-Memory error on a 24 GB GPU when loading a 7B Mamba or Hybrid model?", "The engine pre-allocates recurrent Mamba state blocks for 256 concurrent sequences during warmup", ["vLLM duplicates the 7B model weights 256 times", "CUDA limits batch size to 1 on all GPUs", "24 GB GPUs cannot store 7 billion parameters in BF16"]),
+        ("What is the approximate static weight memory footprint of a 7.5-billion-parameter model stored in 16-bit (BF16) precision?", "Roughly 14 to 15 GB", ["Roughly 1.5 GB", "Roughly 60 GB", "Roughly 500 MB"]),
+        ("What is the Kullback-Leibler (KL) divergence KL(P || Q) between two identical probability distributions P = Q?", "Zero (0.0)", ["One (1.0)", "Negative infinity", "100.0"]),
+        ("How is language modeling perplexity (PPL) mathematically defined in terms of average cross-entropy loss (negative log-likelihood) L in nats?", "PPL = exp(L)", ["PPL = log(L)", "PPL = 1 / L", "PPL = L^2"]),
+        ("Why can raw perplexity values not be directly compared across models that use different tokenizers and vocabulary sizes?", "Perplexity is normalized per token, and different tokenizers segment the exact same text into different numbers of tokens", ["Tokenizers encrypt the loss value with a secret key", "Larger vocabularies always have zero perplexity", "Perplexity only applies to image classification"]),
+        ("Which normalization layer is used prior to mixer blocks in Falcon3, Falcon-Mamba, and Falcon-H1?", "RMSNorm (Root Mean Square Layer Normalization)", ["Batch Normalization across sequence length", "Dropout Normalization", "L1 Weight Clipping"]),
+        ("How does RMSNorm differ from standard LayerNorm?", "RMSNorm omits mean centering and normalizes only by the root-mean-square statistic, reducing memory and compute overhead", ["RMSNorm sorts activations in ascending order", "RMSNorm requires training a separate recurrent network", "RMSNorm operates only on integer tensors"]),
+        ("In Activation-aware Weight Quantization (AWQ), how are salient weight channels protected during 4-bit quantization?", "Channels corresponding to large activation magnitudes are scaled up prior to quantization to reduce relative quantization error", ["Salient weights are deleted and set to zero", "All weights are randomly permuted before every token", "AWQ converts the model into a decision tree"]),
+        ("What is the main difference between weight-only quantization (e.g., W4A16) and weight-activation quantization (e.g., W8A8 FP8)?", "W4A16 stores weights in 4-bit and dequantizes to 16-bit for GEMMs, whereas W8A8 executes matrix multiplications directly on 8-bit Tensor Cores", ["W4A16 quantizes only activations and keeps weights in FP32", "W8A8 requires 64 bits per weight", "W4A16 cannot run on NVIDIA GPUs"]),
+        ("In bitsandbytes NF4 eager execution on an L4 GPU, why does quantizing Falcon3-7B speed up batch-1 decode from 14.2 to 18.6 tok/s?", "Fetching 4-bit weights reduces GDDR6 memory traffic by ~3x, overcoming the on-the-fly dequantization overhead in large Transformer GEMMs", ["NF4 increases the GPU clock frequency by 300%", "NF4 skips half of the 28 Transformer layers", "NF4 disables attention computation"]),
+        ("In our benchmark, what caused Falcon3-Mamba-7B's peak allocated VRAM in HF eager mode to grow by ~6.5 GB at 16K context despite its persistent state being only 20 MB?", "Transient prefill activation and workspace tensors allocated during the 16K prompt forward pass", ["The Mamba recurrent state grows quadratically with sequence length", "The model weights expanded from BF16 to FP64", "PyTorch leaked 6.5 GB of CPU RAM onto the GPU"]),
+        ("What hardware API provided by NVIDIA allows Python processes to query board power draw (milliwatts) and cumulative energy counters (millijoules)?", "NVML (NVIDIA Management Library / pynvml)", ["OpenGL Shader Language", "DirectX Audio API", "POSIX Socket API"]),
+        ("If a power monitor samples GPU power every 20 milliseconds, what is its sampling frequency in Hertz?", "50 Hz", ["5 Hz", "500 Hz", "2000 Hz"]),
+        ("Why is Total Joules per Token preferred over Dynamic (idle-subtracted) Joules per Token when comparing models across serverless GPU containers?", "Pre-load container idle power varies with driver/clock state across instances, whereas total active board power during decoding is stable", ["Total Joules per Token is always zero", "Serverless GPUs do not consume any idle power", "Dynamic energy ignores the decode phase"]),
+        ("In structured state space duality (Mamba-2), how do multi-head SSM heads relate to attention heads?", "Features are partitioned into multiple SSM heads that share state transition dynamics within each head, analogous to multi-head attention", ["Mamba-2 replaces all linear projections with max-pooling", "Mamba-2 uses a quadratic KV cache in every head", "Mamba-2 has no recurrent state"]),
+        ("What happens to arithmetic intensity (FLOPs/byte) during LLM decoding when batch size increases from B=1 to B=64?", "Arithmetic intensity increases roughly proportionally with B because weight fetches are amortized across 64 concurrent sequences", ["Arithmetic intensity drops to zero", "Arithmetic intensity decreases by 64x", "Weight memory traffic increases by 64x per step"]),
+        ("In Python's Hugging Face transformers library, what does passingllm_int8_skip_modules=['mamba', 'lm_head'] to BitsAndBytesConfig accomplish?", "It keeps any submodule whose name matches 'mamba' or 'lm_head' in its native 16-bit precision while quantizing remaining linear layers", ["It deletes the mamba and lm_head modules from the model", "It forces those modules to run on the CPU in FP64", "It quantizes only those modules to 2-bit precision"]),
+        ("What is the primary role of the causal mask in autoregressive Transformer prefill?", "Preventing token at position t from attending to future tokens at positions > t", ["Masking out 50% of tokens at random like BERT", "Zeroing out the model weights after prefill", "Sorting tokens by length"]),
+        ("Why does greedy decoding (temperature = 0, do_sample = False) improve benchmark reproducibility?", "It deterministically selects the argmax token at every step, eliminating random sampling variance across trials", ["It skips the softmax and linear head entirely", "It doubles the GPU memory bandwidth", "It forces the model to stop after 1 token"]),
     ]
-    for i in range(50):
-        q, corr, wrongs = sys_templates[i % len(sys_templates)]
-        variant_prefix = f"Scenario #{i+1}: "
+    for i, (q, corr, wrongs) in enumerate(sys_questions):
         all_choices = [corr] + wrongs
         rot = (i + 1) % 4
         ordered = all_choices[rot:] + all_choices[:rot]
         correct_letter = ["A", "B", "C", "D"][ordered.index(corr)]
         prompt = (
-            f"{variant_prefix}{q}\n"
+            f"Systems Question #{i+1}: {q}\n"
             f"A) {ordered[0]}\nB) {ordered[1]}\nC) {ordered[2]}\nD) {ordered[3]}\n"
             f"Answer with the single letter (A, B, C, or D): "
         )
         items.append({"domain": "systems", "prompt": prompt, "correct": correct_letter})
 
-    # Domain 3: 50 Arabic & UAE Comprehension / Technical Knowledge Items
-    ar_templates = [
-        (
-            "ما هي عاصمة دولة الإمارات العربية المتحدة التي يقع فيها معهد الابتكار التكنولوجي (TII)؟",
-            "أبوظبي",
-            ["القاهرة", "الرباط", "مدريد"],
-        ),
-        (
-            "أي من النماذج اللغوية التالية تم تطويره بواسطة معهد الابتكار التكنولوجي (TII) في أبوظبي؟",
-            "سلسلة نماذج فالكون (Falcon)",
-            ["نظام تشغيل لينكس", "متصفح فايرفوكس", "قاعدة بيانات بوستجرس"],
-        ),
-        (
-            "ما هي الفائدة الرئيسية للبنية الهجينة (Falcon-H1) التي تجمع بين Mamba وآلية الانتباه (Attention)؟",
-            "تقليل استهلاك الذاكرة مع الحفاظ على دقة استرجاع المعلومات في النصوص الطويلة",
-            ["زيادة حجم النموذج إلى عشرة أضعاف", "إلغاء الحاجة إلى معالجات الرسوميات كلياً", "منع النموذج من قراءة النصوص العربية"],
-        ),
-        (
-            "ما هي الوحدة الفيزيائية القياسية المستخدمة لقياس الطاقة المستهلكة لكل رمز مولد في مراكز البيانات؟",
-            "جول لكل رمز (Joules per token)",
-            ["متر لكل ثانية", "كيلوغرام لكل لتر", "درجة مئوية لكل حرف"],
-        ),
-        (
-            "في أي مدينة إماراتية يقع برج خليفة، أطول مبنى في العالم؟",
-            "دبي",
-            ["دمشق", "تونس", "لندن"],
-        ),
+    # Domain 3: 50 Unique Arabic & UAE Comprehension, Science & Technical Knowledge Questions
+    ar_questions = [
+        ("ما هي عاصمة دولة الإمارات العربية المتحدة التي يقع فيها معهد الابتكار التكنولوجي (TII)؟", "أبوظبي", ["القاهرة", "الرباط", "مدريد"]),
+        ("أي من النماذج اللغوية التالية تم تطويره بواسطة معهد الابتكار التكنولوجي (TII) في أبوظبي؟", "سلسلة نماذج فالكون (Falcon)", ["نظام تشغيل لينكس", "متصفح فايرفوكس", "قاعدة بيانات بوستجرس"]),
+        ("ما هي الفائدة الرئيسية للبنية الهجينة (Falcon-H1) التي تجمع بين Mamba وآلية الانتباه (Attention)؟", "تقليل استهلاك الذاكرة مع الحفاظ على دقة استرجاع المعلومات في النصوص الطويلة", ["زيادة حجم النموذج إلى عشرة أضعاف", "إلغاء الحاجة إلى معالجات الرسوميات كلياً", "منع النموذج من قراءة النصوص العربية"]),
+        ("ما هي الوحدة الفيزيائية القياسية المستخدمة لقياس الطاقة المستهلكة لكل رمز مولد في مراكز البيانات؟", "جول لكل رمز (Joules per token)", ["متر لكل ثانية", "كيلوغرام لكل لتر", "درجة مئوية لكل حرف"]),
+        ("في أي مدينة إماراتية يقع برج خليفة، أطول مبنى في العالم؟", "دبي", ["دمشق", "تونس", "لندن"]),
+        ("كم عدد الإمارات التي يتكون منها اتحاد دولة الإمارات العربية المتحدة؟", "سبع إمارات", ["ثلاث إمارات", "عشر إمارات", "خمس عشرة إمارة"]),
+        ("في أي عام تأسست دولة الإمارات العربية المتحدة؟", "1971", ["1945", "1999", "2010"]),
+        ("ما هو اسم مسبار الفضاء الإماراتي الذي وصل بنجاح إلى مدار كوكب المريخ في عام 2021؟", "مسبار الأمل", ["مسبار زحل", "مسبار عطارد", "مسبار المشتري"]),
+        ("ما هي الجامعة المتخصصة في دراسات وأبحاث الذكاء الاصطناعي والتي تقع في مدينة مصدر بأبوظبي؟", "جامعة محمد بن زايد للذكاء الاصطناعي (MBZUAI)", ["جامعة طوكيو للهندسة", "جامعة أوسلو للطب", "جامعة تورنتو للزراعة"]),
+        ("ما هي العملة الرسمية لدولة الإمارات العربية المتحدة؟", "الدرهم الإماراتي", ["الين الياباني", "اليورو الأوروبي", "الفرنك السويسري"]),
+        ("ما اسم المتحف العالمي الشهير الذي يقع في المنطقة الثقافية بجزيرة السعديات في أبوظبي؟", "متحف اللوفر أبوظبي", ["متحف برادو مدريد", "متحف الأرميتاج", "متحف الأكروبوليس"]),
+        ("ما هو اسم المستكشف الإماراتي المصمم لدراسة سطح القمر ضمن مشروع الإمارات لاستكشاف القمر؟", "المستكشف راشد", ["المستكشف كولومبوس", "المستكشف ماجلان", "المستكشف غاليليو"]),
+        ("أي إمارة في دولة الإمارات العربية المتحدة تلقب بـ «عاصمة الثقافة العربية والإسلامية» وتشتهر بمعرضها الدولي للكتاب؟", "الشارقة", ["أثينا", "برلين", "ستوكهولم"]),
+        ("ما هي أعلى قمة جبلية في دولة الإمارات العربية المتحدة وتقع في إمارة رأس الخيمة؟", "جبل جيس", ["جبل إيفرست", "جبل كليمنجارو", "جبل أوليمبوس"]),
+        ("ما اسم المدينة البيئية المستدامة في أبوظبي التي تعتمد على الطاقة المتجددة والتقنيات النظيفة؟", "مدينة مصدر", ["مدينة سيليكون", "مدينة كيوتو", "مدينة جنيف"]),
+        ("ما هو المؤتمر العالمي للمناخ الذي استضافته دولة الإمارات العربية المتحدة في مدينة إكسبو دبي عام 2023؟", "مؤتمر الأطراف COP28", ["مؤتمر الفيزياء النووية", "قمة الرياضة الشتوية", "معرض الطيران الزراعي"]),
+        ("من هو الأب المؤسس وأول رئيس لدولة الإمارات العربية المتحدة؟", "الشيخ زايد بن سلطان آل نهيان، طيب الله ثراه", ["الملك فيصل بن عبد العزيز", "السلطان قابوس بن سعيد", "الأمير جابر الأحمد"]),
+        ("ما هو الخليج المائي الذي تطل عليه السواحل الشمالية والغربية لدولة الإمارات العربية المتحدة؟", "الخليج العربي", ["خليج البنغال", "خليج المكسيك", "خليج هدسون"]),
+        ("ما هو المسجد الكبير الشهير في العاصمة أبوظبي الذي يعد من أبرز المعالم المعمارية الإسلامية في العالم؟", "جامع الشيخ زايد الكبير", ["مسجد قرطبة", "مسجد السلطان أحمد", "الجامع الأموي"]),
+        ("ما اسم المحطة النووية السلمية لإنتاج الكهرباء النظيفة في منطقة الظفرة بإمارة أبوظبي؟", "محطة براكة للطاقة النووية السلمية", ["محطة فوكوشيما", "محطة تشيرنوبل", "محطة كالدر هول"]),
+        ("كم عدد الحروف الأبجدية الأساسية في اللغة العربية؟", "28 حرفاً", ["18 حرفاً", "40 حرفاً", "52 حرفاً"]),
+        ("ما هو العلم الذي يدرس قواعد ضبط أواخر الكلمات العربية وموقعها الإعرابي في الجملة؟", "علم النحو", ["علم الفلك", "علم الجيولوجيا", "علم النبات"]),
+        ("ما هو العلم الذي يبحث في بنية الكلمة العربية واشتقاقها وتصريفها؟", "علم الصرف", ["علم البصريات", "علم الميكانيكا", "علم الأرصاد"]),
+        ("من هو العالم المسلم الذي وضع أسس علم الجبر وسميت الخوارزميات (Algorithms) نسبةً إلى اسمه؟", "محمد بن موسى الخوارزمي", ["أبقراط اليوناني", "إسحاق نيوتن", "لويس باستور"]),
+        ("من هو العالم العربي الشهير الذي ألف كتاب «المناظر» وقدم إسهامات تأسيسية في علم البصريات والمنهج التجريبي؟", "الحسن بن الهيثم", ["ابن بطوطة", "أحمد بن ماجد", "الأصمعي"]),
+        ("ما هو المصطلح العربي المقابل لمفهوم «Artificial Intelligence» في علوم الحاسوب؟", "الذكاء الاصطناعي", ["الفيزياء الحرارية", "الهندسة المدنية", "الكيمياء العضوية"]),
+        ("ما هي عملية تقسيم النص اللغوي إلى وحدات صغيرة (رموز أو كلمات فرعية) قبل إدخالها إلى النموذج اللغوي؟", "التقطيع الرمزي (Tokenization)", ["التبخير الحراري", "الانشطار النووي", "الترسيب الكيميائي"]),
+        ("في تعلم الآلة، ماذا نسمي المرحلة التي يتم فيها ضبط أوزان النموذج المسبق التدريب على مهمة محددة أو بيانات متخصصة؟", "الضبط الدقيق (Fine-Tuning)", ["الحذف العشوائي", "إيقاف التشغيل", "تلف البيانات"]),
+        ("ما هو المقصود بالتكميم (Quantization) في سياق ضغط النماذج اللغوية الكبيرة؟", "تمثيل أوزان النموذج بعدد أقل من البتات لتقليل حجم الذاكرة", ["زيادة عدد طبقات النموذج إلى الضعف", "ترجمة النص من العربية إلى الصينية", "تحويل الصوت إلى صورة"]),
+        ("ما هي الذاكرة الفائقة السرعة الموجودة داخل شريحة المعالج الرسومي (GPU) والتي تستخدمها خوارزمية FlashAttention؟", "ذاكرة SRAM المدمجة على الشريحة", ["القرص الصلب الميكانيكي HDD", "الشريط المغناطيسي", "بطاقة الذاكرة الخارجية SD"]),
+        ("ما هي العلاقة الرياضية بين القدرة الكهربائية (بالواط) والطاقة المستهلكة (بالجول) والزمن (بالثواني)؟", "الطاقة (جول) = القدرة (واط) × الزمن (ثانية)", ["الطاقة = القدرة ÷ المسافة", "الطاقة = الزمن - القدرة", "الطاقة = مربع السرعة فقط"]),
+        ("إذا استهلك معالج رسومي طاقة قدرها 400 جول لتوليد 100 رمز، فكم يبلغ استهلاك الطاقة لكل رمز؟", "4 جول لكل رمز", ["40000 جول لكل رمز", "0.25 جول لكل رمز", "140 جول لكل رمز"]),
+        ("لماذا تستخدم معالجات الرسوميات (GPUs) على نطاق واسع في تدريب وتشغيل الشبكات العصبية العميقة؟", "لقدرتها العالية على تنفيذ آلاف عمليات ضرب المصفوفات على التوازي", ["لأنها لا تستهلك أي كهرباء إطلاقاً", "لأنها تعمل بدون ذاكرة عشوائية", "لأنها مصممة لطباعة الأوراق فقط"]),
+        ("ما هو الفرق الأساسي بين مرحلة المعالجة الأولية (Prefill) ومرحلة التوليد (Decode) في النماذج اللغوية؟", "مرحلة المعالجة الأولية تعالج رموز المدخلات بالتوازي، بينما مرحلة التوليد تنتج الرموز واحداً تلو الآخر تسلسلياً", ["مرحلة التوليد تسبق مرحلة المعالجة الأولية دائماً", "مرحلة المعالجة الأولية لا تستخدم المعالج الرسومي", "لا يوجد أي فرق بين المرحلتين"]),
+        ("ماذا يحدث لحجم ذاكرة المفاتيح والقيم (KV Cache) في نموذج المحول (Transformer) عندما يتضاعف طول النص من 2000 إلى 4000 رمز؟", "يتضاعف حجم ذاكرة المفاتيح والقيم بمقدار الضعف تقريباً", ["ينخفض حجم الذاكرة إلى الصفر", "يبقى ثابتاً عند 1 بايت", "ينقص بمقدار النصف"]),
+        ("ماذا يحدث لحجم الحالة التكرارية في نموذج فضاء الحالة النقي (Mamba) عندما يتضاعف طول النص من 2000 إلى 4000 رمز؟", "يبقى حجم الحالة التكرارية ثابتاً لا يتغير", ["يزداد أربع مرات", "يزداد مئة مرة", "يمسح أوزان النموذج"]),
+        ("ما هي وظيفة دالة السوفت ماكس (Softmax) في الطبقة الأخيرة من النموذج اللغوي؟", "تحويل القيم العددية الخام (Logits) إلى توزيع احتمالي مجموع احتمالاته يساوي واحداً", ["حذف نصف الكلمات من القاموس", "تبريد المعالج الرسومي", "ضغط الملفات النصية"]),
+        ("في التوليد الجشع (Greedy Decoding)، كيف يختار النموذج اللغوي الرمز التالي في كل خطوة؟", "يختار الرمز صاحب الاحتمال الأعلى دائماً بشكل حتمي", ["يختار الرمز الأقل احتمالاً دائماً", "يختار رمزاً عشوائياً تماماً دون النظر للاحتمالات", "يتوقف عن التوليد فوراً"]),
+        ("ما هو الهدف من استخدام مقياس انحراف كولباك-لايبلر (KL Divergence) عند تقييم النماذج المكممة؟", "قياس مقدار الفرق بين التوزيع الاحتمالي للنموذج الأصلي والتوزيع الاحتمالي للنموذج المكمم", ["قياس درجة حرارة الغرفة", "حساب عدد أسطر الكود البرمجي", "معرفة سرعة الإنترنت"]),
+        ("ماذا يعني مصطلح «النماذج مفتوحة الأوزان» (Open-Weights Models) مثل نماذج فالكون؟", "إتاحة أوزان النموذج المدرب للباحثين والمطورين لتحميلها وتشغيلها وتطويرها محلياً", ["أن أوزان النموذج غير مدربة إطلاقاً", "أن النموذج يعمل فقط عبر متصفح مدفوع", "أن حجم النموذج صفر بايت"]),
+        ("أي إمارة إماراتية تقع على ساحل بحر العرب (خليج عمان) في الجزء الشرقي من الدولة؟", "الفجيرة", ["الدوحة", "المنامة", "مسقط"]),
+        ("ما اسم الجزيرة الترفيهية في أبوظبي التي تستضيف سباق جائزة الاتحاد للطيران الكبرى للفورمولا 1؟", "جزيرة ياس", ["جزيرة صقلية", "جزيرة كريت", "جزيرة قبرص"]),
+        ("ما اسم المطار الدولي الرئيسي في إمارة أبوظبي بعد تسميته الرسمية الحديثة؟", "مطار زايد الدولي", ["مطار هيثرو", "مطار شارل ديغول", "مطار فرانكفورت"]),
+        ("ما اسم المجلس الحكومي المشرف على معهد الابتكار التكنولوجي (TII) في إمارة أبوظبي؟", "مجلس أبحاث التكنولوجيا المتطورة (ATRC)", ["وكالة الفضاء الأوروبية", "البنك المركزي الأوروبي", "منظمة التجارة العالمية"]),
+        ("في أي اتجاه تكتب وتقرأ اللغة العربية؟", "من اليمين إلى اليسار", ["من اليسار إلى اليمين", "من الأسفل إلى الأعلى عمودياً", "بشكل دائري"]),
+        ("ما هو جمع كلمة «نموذج» في اللغة العربية الفصحى؟", "نماذج", ["نموذجاتون", "مناذج", "أنامذ"]),
+        ("ما هو مرادف كلمة «كفاءة» في السياق الهندسي والعلمي؟", "فاعلية وحسن استغلال الموارد", ["إهدار الطاقة", "بطء شديد", "عطل فني"]),
+        ("كم يساوي الكيلوبايت الواحد (1 KiB) في النظام الثنائي للحاسوب؟", "1024 بايت", ["100 بايت", "512 بايت", "2048 بايت"]),
+        ("كم عدد البتات (Bits) الموجودة في البايت الواحد (1 Byte)؟", "8 بتات", ["2 بت", "16 بت", "64 بت"]),
+        ("ما هي لغة البرمجة الأكثر استخداماً في تطوير أطر التعلم العميق مثل PyTorch و vLLM؟", "لغة بايثون (Python) مع نوى السي بلس بلس وكودا (C++/CUDA)", ["لغة كوبول (COBOL)", "لغة باسكال (Pascal)", "لغة أسمبلي للمعالجات القديمة فقط"]),
     ]
-    for i in range(50):
-        q, corr, wrongs = ar_templates[i % len(ar_templates)]
+    for i, (q, corr, wrongs) in enumerate(ar_questions):
         all_choices = [corr] + wrongs
         rot = (i + 2) % 4
         ordered = all_choices[rot:] + all_choices[:rot]
@@ -262,7 +415,7 @@ def build_200_item_eval_suite() -> list[dict[str, Any]]:
         )
         items.append({"domain": "arabic", "prompt": prompt, "correct": correct_letter})
 
-    # Domain 4: 50 Multi-Needle Key-Value Context Recall Items
+    # Domain 4: 50 Unique Multi-Needle Key-Value Context Recall Items
     for i in range(1, 51):
         k_alpha = f"ALPHA-{100 + i * 3}"
         k_beta = f"BETA-{200 + i * 5}"
@@ -571,7 +724,7 @@ def run_gpu_benchmark(
     print(f"[{arch_label}] Running Dense PPL/KL & 200-Item Zero-Shot Benchmark ({precision})...")
     os.makedirs(RESULTS_DIR, exist_ok=True)
     safe_model_tag = model_id.replace("/", "__")
-    bf16_ref_path = f"{RESULTS_DIR}/{safe_model_tag}__bf16_ref_logits_v2.pt"
+    bf16_ref_path = f"{RESULTS_DIR}/{safe_model_tag}__bf16_ref_logits_v3.pt"
 
     total_nll = 0.0
     total_eval_tokens = 0
@@ -881,6 +1034,7 @@ def run_gpu_benchmark(
                 "joules_per_token_dynamic": jd_m,
                 "joules_per_token_dynamic_std": jd_s,
                 "eval_tokens_count": compared_tokens,
+                "eval_passages_n": len(passage_nlls),
                 "eval_ppl": round(eval_ppl, 4),
                 "ppl_delta_pct": round(ppl_delta_pct, 2),
                 "ppl_delta_se_pct": round(ppl_delta_se_pct, 2),
@@ -925,12 +1079,27 @@ def run_gpu_benchmark(
         json.dump(results, f, indent=2)
     volume.commit()
 
+    eval_summary = {
+        "eval_tokens_count": compared_tokens,
+        "eval_passages_n": len(passage_nlls),
+        "eval_ppl": round(eval_ppl, 4),
+        "ppl_delta_pct": round(ppl_delta_pct, 2),
+        "ppl_delta_se_pct": round(ppl_delta_se_pct, 2),
+        "kl_div_vs_bf16": round(kl_div_vs_bf16, 5),
+        "kl_div_se": round(kl_div_se, 5),
+        "top1_agree_pct": round(top1_agree_pct, 2),
+        "eval_tasks_n": n_eval_items,
+        "task_accuracy_pct": round(task_accuracy_pct, 2),
+        "task_accuracy_se_pct": round(task_accuracy_se_pct, 2),
+        "domain_accuracy_pct": domain_acc_pct,
+    }
+
     pynvml.nvmlShutdown()
     del model
     del tokenizer
     gc.collect()
     torch.cuda.empty_cache()
-    return {"records": results, "raw_traces": raw_traces}
+    return {"records": results, "raw_traces": raw_traces, "eval_summary": eval_summary}
 
 
 @app.local_entrypoint()
@@ -960,12 +1129,49 @@ def main(
             else [512, 2048, 8192]
         )
         precisions = ["bf16", "int4_uniform", "int4_mixed_ssm"]
+    elif mode == "eval-only":
+        models = SEVEN_B_TRIAD
+        ctx_list = []
+        precisions = ["bf16", "int4_uniform", "int4_mixed_ssm"]
     else:
-        raise ValueError(f"Unknown mode '{mode}'. Choose from: smoke, crossover, quant-ablation")
+        raise ValueError(f"Unknown mode '{mode}'. Choose from: smoke, crossover, quant-ablation, eval-only")
 
     print("=" * 80)
     print(f"TII FALCON BENCHMARK | Mode: {mode} | Contexts: {ctx_list} | Trials: {num_trials}")
     print("=" * 80)
+
+    if mode == "eval-only":
+        print("\n[Stage 2/2] Running 24-passage Bilingual Corpus PPL/KL & 200-Unique-Item Eval Suite on Modal L4...")
+        eval_map: dict[tuple[str, str], dict[str, Any]] = {}
+
+        # Step A: Run all 3 BF16 models in parallel first to save reference logits to Volume
+        bf16_args = [(arch_label, model_id, "bf16", [], decode_tokens, 1) for arch_label, model_id in models]
+        bf16_outs = list(run_gpu_benchmark.starmap(bf16_args))
+        for (_, model_id), out in zip(models, bf16_outs):
+            eval_map[(model_id, "bf16")] = out["eval_summary"]
+
+        # Step B: Run all 5 quantized configurations in parallel across 5 isolated L4 GPUs
+        quant_args = []
+        for arch_label, model_id in models:
+            for prec in ["int4_uniform", "int4_mixed_ssm"]:
+                if prec == "int4_mixed_ssm" and "Transformer" in arch_label and "Hybrid" not in arch_label:
+                    continue
+                quant_args.append((arch_label, model_id, prec, [], decode_tokens, 1))
+        quant_outs = list(run_gpu_benchmark.starmap(quant_args))
+        for (_, model_id, prec, _, _, _), out in zip(quant_args, quant_outs):
+            eval_map[(model_id, prec)] = out["eval_summary"]
+
+        # Update results/benchmark_crossover.json and results/benchmark_quant-ablation.json in-place
+        for target_path in [Path("results/benchmark_crossover.json"), Path("results/benchmark_quant-ablation.json")]:
+            if target_path.exists():
+                rows = json.loads(target_path.read_text(encoding="utf-8"))
+                for r in rows:
+                    key = (r["model_id"], r["precision"])
+                    if key in eval_map:
+                        r.update(eval_map[key])
+                target_path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+                print(f"Updated evaluation fields in {target_path} ({len(rows)} records).")
+        return
 
     print("\n[Stage 1/2] Ensuring model weights are cached in Modal Volume...")
     model_ids = [m[1] for m in models]
@@ -1003,11 +1209,24 @@ def main(
             except Exception:
                 pass
 
+            cached_bf16_traces: dict[str, list[dict[str, Any]]] = {}
+            crossover_traces_file = Path("results/raw_50hz_crossover_traces.json")
+            if crossover_traces_file.exists():
+                try:
+                    with open(crossover_traces_file, "r", encoding="utf-8") as ctf:
+                        for tr in json.load(ctf):
+                            if tr.get("precision") == "bf16" and tr.get("context_length") in ctx_list:
+                                cached_bf16_traces.setdefault(tr["model_id"], []).append(tr)
+                except Exception:
+                    pass
+
         bf16_args = []
         for arch_label, model_id in models:
             if model_id in cached_bf16 and len(cached_bf16[model_id]) == len(ctx_list):
                 print(f"  [Cache Hit] Reusing 5-trial BF16 baseline for {arch_label} from benchmark_crossover.json")
                 all_results.extend(cached_bf16[model_id])
+                if model_id in cached_bf16_traces:
+                    all_raw_traces.extend(cached_bf16_traces[model_id])
             else:
                 bf16_args.append((arch_label, model_id, "bf16", ctx_list, decode_tokens, num_trials))
 

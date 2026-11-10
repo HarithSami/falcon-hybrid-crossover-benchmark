@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vllm-energy-mfu-profiler"
 version = "0.1.0"
-description = "IEEE P1959/P1960-aligned NVML Energy (Joules/token), Roofline MFU (%), and Hybrid MBU (%) Profiler for vLLM and PyTorch (Transformer, Mamba/SSM, and Falcon-H1 Parallel Hybrid models)"
+description = "NVML Energy (Joules/token), Roofline MFU (%), and Hybrid MBU (%) Profiler informed by IEEE P1959/P1960 working-group discussions for vLLM and PyTorch (Transformer, Mamba/SSM, and Falcon-H1 Parallel Hybrid models)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}

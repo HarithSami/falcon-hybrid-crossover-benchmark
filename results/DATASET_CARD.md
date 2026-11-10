@@ -36,7 +36,7 @@ This dataset contains empirical hardware telemetry, latency, energy consumption,
 
 All measurements were captured on isolated **NVIDIA L4 GPUs (24 GB GDDR6, 300 GB/s peak memory bandwidth, 72 W TDP)** via Modal serverless infrastructure with 50 Hz NVML board power polling and hardware cumulative energy counter integration. The measurement protocol was informed by **IEEE P1959/P1960** energy telemetry discussions.
 
-This is the **v2 re-run dataset** (completed 2026-11-01), superseding earlier preliminary 2-trial runs with $n=5$ independent trials per configuration, full error bounds (mean $\pm$ sample std / standard error), and a 200-item templated evaluation probe.
+This is the **v2 re-run dataset**, superseding earlier preliminary 2-trial runs with $n=5$ independent trials per configuration, full error bounds (mean $\pm$ sample std / standard error), a 24-passage bilingual corpus ($2,179\text{--}4,511$ scored tokens), and a 200-unique-item zero-shot benchmark across 4 domains.
 
 ---
 
@@ -52,7 +52,7 @@ The `results/` directory contains structured JSON benchmarks, raw high-frequency
 | `results/benchmark_vllm_mfu.json` | Engine comparison between Hugging Face eager execution and `vLLM` v1 with CUDA Graphs across contexts 512, 2048, and 8192 ($n=5$ trials), reporting throughput, energy, and analytical GDDR6 MBU/MFU. | JSON object with keys `hf_roofline` and `vllm_cudagraph` |
 | `results/benchmark_smoke.json` | Initial verification run on smaller 1B/1.5B models (`Falcon3-1B-Instruct` and `Falcon-H1-1.5B-Deep-Instruct`) evaluating fused CUDA kernels vs reference PyTorch fallbacks. | JSON list (5 objects) |
 | `results/raw_50hz_crossover_traces.json` | 50 Hz (20 ms interval) time-series power telemetry logs for all crossover benchmark configurations. | JSON list (15 trace objects) |
-| `results/raw_50hz_quant-ablation_traces.json` | 50 Hz time-series power telemetry logs for all quantization ablation configurations. | JSON list (15 trace objects) |
+| `results/raw_50hz_quant-ablation_traces.json` | 50 Hz time-series power telemetry logs for all quantization ablation configurations. | JSON list (24 trace objects) |
 | `results/raw_50hz_vllm_traces.json` | 50 Hz time-series power telemetry logs for all vLLM CUDA graph runs. | JSON list (9 trace objects) |
 | `results/plots/` | Publication-ready 2x2 multi-panel plots generated from the benchmark JSONs in both high-res PNG (300 DPI) and vector PDF formats. | PNG and PDF files |
 
@@ -102,14 +102,14 @@ Each entry in the list contains the following attributes:
 - `eval_tokens_count` *(int)*: Number of scored tokens on the bilingual evaluation corpus.
 - `eval_ppl` *(float)*: Exponentiated cross-entropy loss on the evaluation corpus.
 - `ppl_delta_pct` *(float)*: Relative percentage perplexity difference relative to the model's own BF16 baseline: $(\text{PPL}_Q - \text{PPL}_{\text{bf16}}) / \text{PPL}_{\text{bf16}} \times 100\%$.
-- `ppl_delta_se_pct` *(float)*: Passage-level standard error for $\Delta$PPL% ($n=6$ passages).
+- `ppl_delta_se_pct` *(float)*: Passage-level standard error for $\Delta$PPL% ($n=24$ passages).
 - `kl_div_vs_bf16` *(float)*: Mean token-level forward Kullback-Leibler divergence $\text{KL}(P_{\text{bf16}} \parallel Q)$ over next-token logits (nats).
 - `kl_div_se` *(float)*: Token-level standard error of the KL divergence.
 - `top1_agree_pct` *(float)*: Percentage of greedy argmax tokens identical between quantized and BF16 predictions.
-- `eval_tasks_n` *(int)*: Total items in deterministic evaluation probe ($N=200$).
-- `task_accuracy_pct` *(float)*: Overall accuracy percentage on the 200-item probe.
-- `task_accuracy_se_pct` *(float)*: Binomial standard error of probe accuracy ($\sqrt{p(1-p)/N} \times 100\%$).
-- `domain_accuracy_pct` *(dict)*: Accuracy breakdown across 4 domains (`math`, `systems`, `arabic_uae`, `key_value`).
+- `eval_tasks_n` *(int)*: Total items in deterministic evaluation benchmark ($N=200$ unique items).
+- `task_accuracy_pct` *(float)*: Overall accuracy percentage on the 200-unique-item benchmark.
+- `task_accuracy_se_pct` *(float)*: Binomial standard error of benchmark accuracy ($\sqrt{p(1-p)/N} \times 100\%$).
+- `domain_accuracy_pct` *(dict)*: Accuracy breakdown across 4 domains (`math`, `systems`, `arabic`, `recall`).
 - `environment` *(dict)*: Runtime library versions, driver, and CUDA details.
 - `status` *(str)*: Execution status (`ok`).
 
@@ -149,14 +149,14 @@ Array of trace entries logged by `vllm_energy_mfu_profiler.NVMLPowerMonitor`:
    - **Analytical Persistent State:** Theoretical recurrent state (KV cache for Attention heads + conv1d and SSM recurrent state for Mamba layers) calculated exactly from configuration dimensions.
    - **Peak $\Delta$VRAM:** `torch.cuda.max_memory_allocated() - weights_vram_mb`, capturing transient prefill scratchpads and intermediate activations alongside persistent state.
 5. **Quality Probe Protocol:**
-   - 6-passage bilingual (English technical and Arabic/UAE cultural) corpus scored for perplexity ($\Delta\text{PPL}\%$ relative to own BF16 baseline) and token-level logit $\text{KL}(P_{\text{bf16}} \parallel Q)$.
-   - 200-item templated multiple-choice evaluation probe (next-token A/B/C/D scoring) spanning 4 domains $\times$ 50 items: math (50 synthetic linear equations), systems (5 unique questions $\times$ 10 option permutations), Arabic/UAE knowledge (5 unique questions $\times$ 10 option permutations), and key-value recall (50 synthetic pairs).
+   - 24-passage bilingual (12 English technical and 12 Arabic technical/UAE cultural) corpus ($2,179\text{--}4,511$ scored tokens) scored for perplexity ($\Delta\text{PPL}\%$ relative to own BF16 baseline) and token-level logit $\text{KL}(P_{\text{bf16}} \parallel Q)$.
+   - 200-unique-item multiple-choice zero-shot benchmark (next-token A/B/C/D scoring) spanning 4 domains $\times$ 50 genuinely unique questions: math (50 distinct linear equations), systems/ML architecture (50 distinct questions), Arabic/UAE/science knowledge (50 distinct questions), and multi-needle key-value recall (50 distinct key-value records).
 
 ---
 
 ## Scope & Limitations
 
-1. **Templated Evaluation Probe:** The systems and Arabic/UAE domains consist of 5 unique questions rotated across 10 answer permutations. The probe is intended as a functional coarse sanity check to detect catastrophic breakdown rather than a comprehensive general capability benchmark. Binomial standard errors are reported for transparency but overstate item independence.
+1. **200-Unique-Item Evaluation Benchmark:** Although all 200 questions are distinct across the 4 domains, a 200-item multiple-choice benchmark has a binomial standard error of $\sim 1.7\text{--}3.5\%$ and is intended to detect functional degradation rather than replace multi-thousand-item general capability suites. Continuous token-level KL divergence and corpus perplexity serve as the primary fidelity metrics.
 2. **Analytical MBU Metric:** Model Bandwidth Utilization (MBU %) is computed from an analytical model of weights and persistent state traffic divided by peak hardware bandwidth (300 GB/s). It does not measure raw hardware bus counters and excludes activation and logit memory traffic.
 3. **Container Idle Floor Variation:** Pre-load idle power varied across serverless container allocations from 13.5 W to 35.4 W (post-load idle: 36.1 W to 43.6 W). Consequently, dynamic J/tok (which subtracts pre-load idle) is influenced by container initialization state and is reported only as a secondary metric; total J/tok is the primary metric.
 4. **Batch Size Scope:** All measurements were conducted at batch size 1 (single-stream low-latency decode). Multi-tenant batched throughput and multi-sequence serving dynamics were not evaluated in the crossover sweep.

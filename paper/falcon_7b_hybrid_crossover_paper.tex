@@ -113,19 +113,19 @@ Given the memory-bound nature of batch-1 autoregressive decoding, we define an a
 \begin{equation}
 \mathrm{MBU}(\%) = \frac{\left(\mathrm{Bytes}_{\mathrm{weights}} + \mathrm{Bytes}_{\mathrm{KV}}(\bar{N}) + 2 \cdot \mathrm{Bytes}_{\mathrm{SSM}}\right) \times \mathrm{TPS}_{\mathrm{decode}}}{\mathrm{BW}_{\mathrm{peak}}} \times 100
 \end{equation}
-where $\mathrm{BW}_{\mathrm{peak}} = 300.0\,\text{GB/s}$ for NVIDIA L4 GDDR6. This formulation accounts for parameter weights, average sequence KV cache transfers, and bidirectional read-write access to recurrent state buffers. Because this metric omits transient activations, logit buffers, and memory controller overhead, it serves as a model-based analytical estimate rather than a hardware counter measurement. In parallel, Model FLOPs Utilization (MFU) is reported for completeness, remaining between 0.18\% and 0.22\% across all configurations due to low arithmetic intensity at $B=1$.
+where $\mathrm{BW}_{\mathrm{peak}} = 300.0\,\text{GB/s}$ for NVIDIA L4 GDDR6. This formulation accounts for parameter weights, average sequence KV cache transfers, and bidirectional read-write access to recurrent state buffers. Because this metric omits transient activations, logit buffers, and memory controller overhead, it serves as a model-based analytical estimate rather than a hardware counter measurement. In parallel, Model FLOPs Utilization (MFU) is reported for completeness, remaining between 0.11\% and 0.22\% across all configurations due to low arithmetic intensity at $B=1$.
 
 \subsection{Quantization Evaluation Protocol}
 Quantization fidelity was assessed using both continuous distribution metrics and functional probing across three precision modes: full precision (\texttt{bf16}), uniform 4-bit NormalFloat (\texttt{int4\_uniform} via \texttt{bitsandbytes}), and branch-aware mixed precision (\texttt{int4\_mixed\_ssm}). In \texttt{int4\_mixed\_ssm}, linear layers within Mamba recurrent blocks are retained in BF16, while self-attention projections and feedforward SwiGLU MLPs are quantized to NF4.
 
 Fidelity evaluation comprises:
 \begin{enumerate}
-    \item \textbf{Continuous Language Modeling Fidelity:} Dense evaluation perplexity (PPL) and token-level logit Kullback-Leibler divergence $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ evaluated over a bilingual (English and Arabic) evaluation corpus spanning 769 to 1,223 scored tokens. Relative perplexity degradation is measured within-model:
+    \item \textbf{Continuous Language Modeling Fidelity:} Dense evaluation perplexity (PPL) and token-level logit Kullback-Leibler divergence $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ evaluated over a 24-passage bilingual (12 English and 12 Arabic passages) evaluation corpus spanning 2,179 to 4,511 scored tokens across tokenizers (\texttt{Falcon-H1-7B}: 2,179; \texttt{Falcon3-7B}: 3,751; \texttt{Falcon3-Mamba-7B}: 4,511). Relative perplexity degradation is measured within-model:
     \begin{equation}
     \Delta\text{PPL}\% = \frac{\mathrm{PPL}_Q - \mathrm{PPL}_{\mathrm{bf16}}}{\mathrm{PPL}_{\mathrm{bf16}}} \times 100
     \end{equation}
-    Standard errors are reported at the passage level ($n=6$) for $\Delta$PPL and at the token level for KL divergence.
-    \item \textbf{Templated Multiple-Choice Functional Probe:} A 200-item multiple-choice probe across four domains (50 questions each): arithmetic reasoning (50 synthetic linear equations), systems concepts (5 unique questions with 10 option permutations), Arabic linguistic and regional knowledge (5 unique questions with 10 option permutations), and key-value associative recall (50 synthetic pairs). Because the systems and Arabic domains contain only 5 unique underlying questions, test items are not independent. Probe accuracy is treated strictly as a coarse functional sanity check to detect model collapse rather than an independent benchmark.
+    Standard errors are reported at the passage level ($n=24$) for $\Delta$PPL and at the token level for KL divergence.
+    \item \textbf{200-Item Zero-Shot Multiple-Choice Benchmark:} A deterministic 200-item multiple-choice benchmark across four domains (50 unique questions each, with zero template/option-rotation repetition): arithmetic and linear algebra reasoning (50 unique linear equations), systems and ML architecture concepts (50 unique questions), Arabic linguistic, cultural, and scientific knowledge (50 unique questions), and multi-needle key-value associative recall (50 unique records). Binomial standard errors ($\sqrt{p(1-p)/200}$) are reported across the 200 independent items.
 \end{enumerate}
 
 \section{Empirical Results}
@@ -188,7 +188,7 @@ Table~\ref{tab:quant} and Figure~\ref{fig:quant} summarize the quantization abla
 \centering
 \footnotesize
 \setlength{\tabcolsep}{1.8pt}
-\caption{Weight quantization fidelity, memory footprint, and serving latency across the 7B triad ($n=5$ trials for latency and energy; quality metrics evaluated over bilingual corpus and 200-item probe). $\Delta$PPL standard error is passage-level ($n=6$); KL standard error is token-level. Probe accuracy is a coarse functional check.}
+\caption{Weight quantization fidelity, memory footprint, and serving latency across the 7B triad ($n=5$ trials for latency and energy; quality metrics evaluated over a 24-passage bilingual corpus and 200-unique-item zero-shot benchmark). $\Delta$PPL standard error is passage-level ($n=24$); KL standard error is token-level ($2{,}179\text{--}4{,}511$ tokens).}
 \label{tab:quant}
 \begin{tabular}{llrrrrrrr}
 \toprule
@@ -196,18 +196,18 @@ Table~\ref{tab:quant} and Figure~\ref{fig:quant} summarize the quantization abla
 & \textbf{(MB)} & \textbf{$\pm$ SE} & \textbf{$\pm$ SE} & \textbf{$\pm$ SE} & \textbf{(tok/s)} & & \textbf{(MB)} \\
 \midrule
 \multicolumn{8}{l}{\textit{Falcon3-7B (Pure Transformer; TTFT@2K: 552.0\,ms unquantized vs.\ 634.1\,ms INT4)}} \\
-\texttt{bf16} & 14,220.4 & 0.0 & 0.000 & 70.0 $\pm$ 3.2 & 14.19 $\pm$ 0.03 & 5.074 $\pm$ 0.012 & 16,532.8 \\
-\texttt{int4\_uniform} & 4,808.4 & $-$3.31 $\pm$ 1.99 & 0.175 $\pm$ 0.020 & 64.0 $\pm$ 3.4 & 18.58 $\pm$ 0.09 & 3.851 $\pm$ 0.021 & 7,120.8 \\
+\texttt{bf16} & 14,220.4 & 0.0 & 0.000 & 75.0 $\pm$ 3.1 & 14.19 $\pm$ 0.03 & 5.074 $\pm$ 0.012 & 16,532.8 \\
+\texttt{int4\_uniform} & 4,808.4 & $-$2.86 $\pm$ 1.94 & 0.169 $\pm$ 0.009 & 71.0 $\pm$ 3.2 & 18.58 $\pm$ 0.09 & 3.851 $\pm$ 0.021 & 7,120.8 \\
 \midrule
 \multicolumn{8}{l}{\textit{Falcon3-Mamba-7B (Pure SSM; TTFT@2K: 819.9\,ms unquantized vs.\ 916.0\,ms uniform)}} \\
-\texttt{bf16} & 13,896.7 & 0.0 & 0.000 & 48.0 $\pm$ 3.5 & 9.51 $\pm$ 0.06 & 7.035 $\pm$ 0.063 & 17,236.1 \\
-\texttt{int4\_uniform} & 4,359.0 & $+$3.29 $\pm$ 1.15 & 0.074 $\pm$ 0.004 & 53.0 $\pm$ 3.5 & 7.29 $\pm$ 0.02 & 6.635 $\pm$ 0.021 & 7,698.5 \\
-\texttt{int4\_mixed\_ssm} & 13,880.7 & $-$0.43 $\pm$ 0.20 & 0.005 $\pm$ 0.000 & 47.5 $\pm$ 3.5 & 7.12 $\pm$ 0.03 & 8.271 $\pm$ 0.035 & 17,220.1 \\
+\texttt{bf16} & 13,896.7 & 0.0 & 0.000 & 50.0 $\pm$ 3.5 & 9.51 $\pm$ 0.06 & 7.035 $\pm$ 0.063 & 17,236.1 \\
+\texttt{int4\_uniform} & 4,359.0 & $+$2.95 $\pm$ 0.85 & 0.063 $\pm$ 0.002 & 55.5 $\pm$ 3.5 & 7.29 $\pm$ 0.02 & 6.635 $\pm$ 0.021 & 7,698.5 \\
+\texttt{int4\_mixed\_ssm} & 13,880.7 & $-$0.28 $\pm$ 0.21 & 0.005 $\pm$ 0.000 & 49.0 $\pm$ 3.5 & 7.12 $\pm$ 0.03 & 8.271 $\pm$ 0.035 & 17,220.1 \\
 \midrule
 \multicolumn{8}{l}{\textit{Falcon-H1-7B (Parallel Hybrid; TTFT@2K: 680.4\,ms vs.\ 736.4\,ms uniform vs.\ 735.1\,ms mixed)}} \\
-\texttt{bf16} & 14,477.3 & 0.0 & 0.000 & 85.0 $\pm$ 2.5 & 8.96 $\pm$ 0.03 & 7.676 $\pm$ 0.124 & 15,818.1 \\
-\texttt{int4\_uniform} & 4,874.2 & $+$4.78 $\pm$ 2.19 & 0.111 $\pm$ 0.009 & 87.5 $\pm$ 2.3 & 6.66 $\pm$ 0.02 & 7.301 $\pm$ 0.080 & 6,215.0 \\
-\texttt{int4\_mixed\_ssm} & 6,739.7 & $+$3.36 $\pm$ 1.83 & 0.094 $\pm$ 0.006 & 87.0 $\pm$ 2.4 & 6.64 $\pm$ 0.05 & 8.162 $\pm$ 0.086 & 8,080.5 \\
+\texttt{bf16} & 14,477.3 & 0.0 & 0.000 & 90.0 $\pm$ 2.1 & 8.96 $\pm$ 0.03 & 7.676 $\pm$ 0.124 & 15,818.1 \\
+\texttt{int4\_uniform} & 4,874.2 & $+$2.38 $\pm$ 1.62 & 0.110 $\pm$ 0.006 & 93.5 $\pm$ 1.7 & 6.66 $\pm$ 0.02 & 7.301 $\pm$ 0.080 & 6,215.0 \\
+\texttt{int4\_mixed\_ssm} & 6,739.7 & $+$1.96 $\pm$ 1.18 & 0.091 $\pm$ 0.004 & 93.0 $\pm$ 1.8 & 6.64 $\pm$ 0.05 & 8.162 $\pm$ 0.086 & 8,080.5 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -215,18 +215,18 @@ Table~\ref{tab:quant} and Figure~\ref{fig:quant} summarize the quantization abla
 \begin{figure}[htbp]
 \centering
 \includeresultfigure{benchmark_quant-ablation_charts.pdf}
-\caption{Quantization fidelity, memory footprint, and serving latency across the 7B triad. (a) Within-model relative perplexity drift ($\Delta\text{PPL}\% \pm \text{SE}$) versus static weight footprint (GiB); (b) Token-level logit Kullback-Leibler divergence $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ ($\pm \text{SE}$) across quantized formats; (c) 200-item templated probe accuracy (\% $\pm$ binomial SE); (d) Total decode energy consumption per token (J/tok $\pm$ std) at context length $N=8{,}192$.}
+\caption{Quantization fidelity, memory footprint, and serving latency across the 7B triad. (a) Within-model relative perplexity drift ($\Delta\text{PPL}\% \pm \text{SE}$, $n=24$ passages) versus static weight footprint (GiB); (b) Token-level logit Kullback-Leibler divergence $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ ($\pm \text{SE}$) across quantized formats; (c) 200-unique-item zero-shot benchmark accuracy (\% $\pm$ binomial SE); (d) Total decode energy consumption per token (J/tok $\pm$ std) at context length $N=8{,}192$.}
 \label{fig:quant}
 \end{figure}
 
 The empirical quantization data reveals several critical findings:
 \begin{itemize}
-    \item \textbf{No Catastrophic Accuracy Collapse:} Across all models and precisions, probe accuracy differences remain within $1\text{--}1.5$ standard errors of unquantized baselines (e.g., for \texttt{Falcon3-Mamba-7B}: 48.0\% $\to$ 53.0\% $\to$ 47.5\%; for \texttt{Falcon-H1-7B}: 85.0\% $\to$ 87.5\% $\to$ 87.0\%). The previously reported collapse of Mamba accuracy from 80\% to 40\% does not replicate under the expanded 200-item probe. Top-1 output token agreement with BF16 baselines remains high across models: 83.0\% for \texttt{Falcon3-7B} INT4, 88.5\% for \texttt{Falcon3-Mamba-7B} uniform INT4 (97.3\% under mixed precision), and 84.8\% vs.\ 86.0\% for \texttt{Falcon-H1-7B} uniform vs.\ mixed INT4.
-    \item \textbf{Role of Mixed Precision on Pure SSM:} Applying the recipe \texttt{int4\_mixed\_ssm} to \texttt{Falcon3-Mamba-7B} leaves almost all weights in BF16 ($13{,}880.7\,\text{MB}$ vs.\ $13{,}896.7\,\text{MB}$), as the model lacks Attention and MLP blocks targeted by the recipe. This configuration achieves near-zero distribution drift ($\mathrm{KL}=0.005 \pm 0.0002$), functioning as an experimental control confirming that the layer skip-list leaves the recurrent path unperturbed.
-    \item \textbf{Mixed Precision on Hybrid Falcon-H1:} On \texttt{Falcon-H1-7B}, \texttt{int4\_mixed\_ssm} compresses static weights by 53.4\% ($14.48 \to 6.74\,\text{GB}$). Compared to \texttt{int4\_uniform} ($4.87\,\text{GB}$), it achieves a modest $\sim 15\%$ lower KL divergence ($0.094 \pm 0.006$ vs.\ $0.111 \pm 0.009$, a difference of $\approx 1.5$ combined standard errors), lower mean perplexity drift ($+3.36\%$ vs.\ $+4.78\%$, with overlapping standard errors), and slightly higher top-1 agreement (86.0\% vs.\ 84.8\%). However, retaining $1.87\,\text{GB}$ of additional weights in BF16 increases memory traffic per token. At 8K context, \texttt{int4\_mixed\_ssm} is slower-or-equal ($6.64 \pm 0.05$ vs.\ $6.66 \pm 0.02\,\text{tok/s}$) and consumes more energy per token ($8.162 \pm 0.086$ vs.\ $7.301 \pm 0.080\,\text{J/tok}$) than uniform INT4. Prefill TTFT at 2K context is equal between uniform and mixed quantization ($736.4$ vs.\ $735.1\,\text{ms}$, compared to $552.0$ vs.\ $634.1\,\text{ms}$ on \texttt{Falcon3-7B} and $819.9$ vs.\ $916.0$ vs.\ $838.5\,\text{ms}$ on \texttt{Falcon3-Mamba-7B}).
+    \item \textbf{No Catastrophic Accuracy Collapse:} Across all models and precisions, 200-item zero-shot accuracy differences remain within $1\text{--}1.5$ standard errors of unquantized baselines (for \texttt{Falcon3-Mamba-7B}: $50.0\% \to 55.5\% \to 49.0\%$; for \texttt{Falcon-H1-7B}: $90.0\% \to 93.5\% \to 93.0\%$; for \texttt{Falcon3-7B}: $75.0\% \to 71.0\%$). The previously reported v1 collapse of Mamba accuracy from 80\% to 40\% ($4/5 \to 2/5$) does not replicate under the 200-unique-item benchmark. Top-1 output token agreement with BF16 baselines remains high across models: 82.2\% for \texttt{Falcon3-7B} INT4, 88.3\% for \texttt{Falcon3-Mamba-7B} uniform INT4 (97.5\% under mixed precision), and 84.5\% vs.\ 85.6\% for \texttt{Falcon-H1-7B} uniform vs.\ mixed INT4.
+    \item \textbf{Role of Mixed Precision on Pure SSM:} Applying the recipe \texttt{int4\_mixed\_ssm} to \texttt{Falcon3-Mamba-7B} leaves almost all weights in BF16 ($13{,}880.7\,\text{MB}$ vs.\ $13{,}896.7\,\text{MB}$), as the model lacks Attention and MLP blocks targeted by the recipe. This configuration achieves near-zero distribution drift ($\mathrm{KL}=0.005 \pm 0.0001$), functioning as an experimental control confirming that the layer skip-list leaves the recurrent path unperturbed.
+    \item \textbf{Mixed Precision on Hybrid Falcon-H1:} On \texttt{Falcon-H1-7B}, \texttt{int4\_mixed\_ssm} compresses static weights by 53.4\% ($14.48 \to 6.74\,\text{GB}$). Compared to \texttt{int4\_uniform} ($4.87\,\text{GB}$), it achieves a 17.4\% lower KL divergence ($0.091 \pm 0.004$ vs.\ $0.110 \pm 0.006$, a difference of $\approx 3.0$ combined standard errors across $2{,}179$ tokens), lower mean perplexity drift ($+1.96\%$ vs.\ $+2.38\%$, with overlapping standard errors), and slightly higher top-1 agreement (85.6\% vs.\ 84.5\%). However, retaining $1.87\,\text{GB}$ of additional weights in BF16 increases memory traffic per token. At 8K context, \texttt{int4\_mixed\_ssm} is slower-or-equal ($6.64 \pm 0.05$ vs.\ $6.66 \pm 0.02\,\text{tok/s}$) and consumes more energy per token ($8.162 \pm 0.086$ vs.\ $7.301 \pm 0.080\,\text{J/tok}$) than uniform INT4. Prefill TTFT at 2K context is equal between uniform and mixed quantization ($736.4$ vs.\ $735.1\,\text{ms}$, compared to $552.0$ vs.\ $634.1\,\text{ms}$ on \texttt{Falcon3-7B} and $819.9$ vs.\ $916.0$ vs.\ $838.5\,\text{ms}$ on \texttt{Falcon3-Mamba-7B}).
     \item \textbf{Hardware Allocation Bounds on 8\,GB GPUs:} Peak VRAM for \texttt{Falcon-H1-7B} under \texttt{int4\_mixed\_ssm} reaches $7{,}001\,\text{MB}$ at context 512 and $8{,}080.5\,\text{MB}$ at context 8K. Consequently, claims that this recipe unlocks deployment on 8\,GB consumer GPUs are unsupported on standard PyTorch memory allocators, as peak prefill memory exceeds 8\,GB at long contexts.
     \item \textbf{Eager Dequantization Slows SSM Decode:} In Hugging Face eager execution with \texttt{bitsandbytes}, 4-bit NormalFloat quantization speeds up \texttt{Falcon3-7B} decode at 8K context (from $14.19$ to $18.58\,\text{tok/s}$, reducing energy by 24.1\%), but slows decode for both SSM-based models (\texttt{Falcon-H1-7B}: $8.96 \to 6.66\,\text{tok/s}$; \texttt{Falcon3-Mamba-7B}: $9.51 \to 7.29\,\text{tok/s}$).
-    \item \textbf{Perplexity Artifacts on Small Corpora:} \texttt{Falcon3-7B} under \texttt{int4\_uniform} exhibits a negative relative $\Delta$PPL ($-3.31 \pm 1.99\%$). This is an artifact of the small 6-passage evaluation corpus; logit KL divergence ($0.175 \pm 0.020$) serves as the more reliable indicator of distribution drift.
+    \item \textbf{Perplexity vs.\ Logit KL Fidelity:} \texttt{Falcon3-7B} under \texttt{int4\_uniform} exhibits a slightly negative relative $\Delta$PPL ($-2.86 \pm 1.94\%$) across the 24 passages while exhibiting the largest token-level logit KL divergence ($0.169 \pm 0.009$). Because perplexity only evaluates the probability assigned to the ground-truth next token, full-vocabulary KL divergence ($P_{\mathrm{bf16}} \parallel Q$) provides the more sensitive and reliable indicator of quantization distribution drift.
 \end{itemize}
 
 \subsection{\texttt{vLLM} (CUDA Graphs) vs.\ Hugging Face Eager: Roofline and Energy Crossover}
@@ -237,7 +237,7 @@ Table~\ref{tab:vllm} and Figure~\ref{fig:vllm} detail performance across all 18 
 \centering
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\caption{\texttt{vLLM} (CUDA graph capture) versus Hugging Face eager execution across sequence lengths ($n=5$ trials, reported as mean $\pm$ std). MBU represents analytical model bandwidth utilization against the NVIDIA L4 300\,GB/s GDDR6 peak. MFU is 0.18\%--0.22\% across all models and engines, reflecting memory-bandwidth-bound single-stream decoding ($B=1$).}
+\caption{\texttt{vLLM} (CUDA graph capture) versus Hugging Face eager execution across sequence lengths ($n=5$ trials, reported as mean $\pm$ std). MBU represents analytical model bandwidth utilization against the NVIDIA L4 300\,GB/s GDDR6 peak. MFU is 0.11\%--0.22\% across all models and engines, reflecting memory-bandwidth-bound single-stream decoding ($B=1$).}
 \label{tab:vllm}
 \begin{tabular}{lrlrrrrr}
 \toprule
@@ -245,27 +245,27 @@ Table~\ref{tab:vllm} and Figure~\ref{fig:vllm} detail performance across all 18 
 \midrule
 \multicolumn{8}{l}{\textit{Falcon3-7B (Pure Transformer)}} \\
 & 512 & \texttt{hf\_eager} & 153.5 $\pm$ 7.0 & 16.43 $\pm$ 0.03 & 4.376 $\pm$ 0.034 & 82.0 & 0.20 \\
-& 512 & \texttt{vllm} & 146.8 $\pm$ 4.8 & 17.54 $\pm$ 0.02 & 4.079 $\pm$ 0.063 & 87.6 & 0.21 \\
-& 2048 & \texttt{hf\_eager} & 552.0 $\pm$ 6.2 & 15.91 $\pm$ 0.02 & 4.529 $\pm$ 0.011 & 80.4 & 0.19 \\
-& 2048 & \texttt{vllm} & 554.4 $\pm$ 6.1 & 17.34 $\pm$ 0.02 & 4.145 $\pm$ 0.017 & 87.6 & 0.21 \\
-& 8192 & \texttt{hf\_eager} & 2674.1 $\pm$ 23.1 & 14.19 $\pm$ 0.03 & 5.074 $\pm$ 0.012 & 75.0 & 0.18 \\
-& 8192 & \texttt{vllm} & 2367.3 $\pm$ 26.9 & 16.55 $\pm$ 0.02 & 4.348 $\pm$ 0.011 & 87.5 & 0.20 \\
+& 512 & \texttt{vllm} & 146.8 $\pm$ 4.8 & 17.54 $\pm$ 0.02 & 4.079 $\pm$ 0.063 & 87.6 & 0.22 \\
+& 2048 & \texttt{hf\_eager} & 552.0 $\pm$ 6.2 & 15.91 $\pm$ 0.02 & 4.529 $\pm$ 0.011 & 80.4 & 0.20 \\
+& 2048 & \texttt{vllm} & 554.4 $\pm$ 6.1 & 17.34 $\pm$ 0.02 & 4.145 $\pm$ 0.017 & 87.6 & 0.22 \\
+& 8192 & \texttt{hf\_eager} & 2674.1 $\pm$ 23.1 & 14.19 $\pm$ 0.03 & 5.074 $\pm$ 0.012 & 75.0 & 0.19 \\
+& 8192 & \texttt{vllm} & 2367.3 $\pm$ 26.9 & 16.55 $\pm$ 0.02 & 4.348 $\pm$ 0.011 & 87.5 & 0.22 \\
 \midrule
 \multicolumn{8}{l}{\textit{Falcon3-Mamba-7B (Pure SSM)}} \\
-& 512 & \texttt{hf\_eager} & 225.0 $\pm$ 5.2 & 9.38 $\pm$ 0.03 & 7.005 $\pm$ 0.110 & 45.7 & 0.18 \\
+& 512 & \texttt{hf\_eager} & 225.0 $\pm$ 5.2 & 9.38 $\pm$ 0.03 & 7.005 $\pm$ 0.110 & 45.7 & 0.11 \\
 & 512 & \texttt{vllm} & 221.9 $\pm$ 6.5 & 17.26 $\pm$ 0.04 & 4.140 $\pm$ 0.062 & 84.1 & 0.21 \\
-& 2048 & \texttt{hf\_eager} & 819.9 $\pm$ 8.6 & 9.45 $\pm$ 0.04 & 6.788 $\pm$ 0.084 & 46.0 & 0.18 \\
+& 2048 & \texttt{hf\_eager} & 819.9 $\pm$ 8.6 & 9.45 $\pm$ 0.04 & 6.788 $\pm$ 0.084 & 46.0 & 0.11 \\
 & 2048 & \texttt{vllm} & 859.9 $\pm$ 11.7 & 17.29 $\pm$ 0.01 & 4.152 $\pm$ 0.012 & 84.3 & 0.21 \\
-& 8192 & \texttt{hf\_eager} & 3605.4 $\pm$ 56.5 & 9.51 $\pm$ 0.06 & 7.035 $\pm$ 0.063 & 46.3 & 0.18 \\
+& 8192 & \texttt{hf\_eager} & 3605.4 $\pm$ 56.5 & 9.51 $\pm$ 0.06 & 7.035 $\pm$ 0.063 & 46.3 & 0.11 \\
 & 8192 & \texttt{vllm} & 3354.2 $\pm$ 15.0 & 17.27 $\pm$ 0.01 & 4.152 $\pm$ 0.012 & 84.2 & 0.21 \\
 \midrule
 \multicolumn{8}{l}{\textit{Falcon-H1-7B (Parallel Hybrid)}} \\
-& 512 & \texttt{hf\_eager} & 258.2 $\pm$ 175.4 & 9.02 $\pm$ 0.05 & 7.044 $\pm$ 0.213 & 46.1 & 0.18 \\
-& 512 & \texttt{vllm} & 176.2 $\pm$ 9.7 & 16.59 $\pm$ 0.02 & 4.294 $\pm$ 0.089 & 84.8 & 0.20 \\
-& 2048 & \texttt{hf\_eager} & 680.4 $\pm$ 12.5 & 9.06 $\pm$ 0.08 & 7.489 $\pm$ 0.115 & 46.7 & 0.18 \\
-& 2048 & \texttt{vllm} & 623.0 $\pm$ 6.8 & 16.42 $\pm$ 0.03 & 4.390 $\pm$ 0.010 & 84.4 & 0.20 \\
-& 8192 & \texttt{hf\_eager} & 3259.3 $\pm$ 46.1 & 8.96 $\pm$ 0.03 & 7.676 $\pm$ 0.124 & 47.9 & 0.18 \\
-& 8192 & \texttt{vllm} & 2643.0 $\pm$ 8.9 & 16.15 $\pm$ 0.05 & 4.450 $\pm$ 0.019 & 84.5 & 0.20 \\
+& 512 & \texttt{hf\_eager} & 258.2 $\pm$ 175.4 & 9.02 $\pm$ 0.05 & 7.044 $\pm$ 0.213 & 46.1 & 0.11 \\
+& 512 & \texttt{vllm} & 176.2 $\pm$ 9.7 & 16.59 $\pm$ 0.02 & 4.294 $\pm$ 0.089 & 84.8 & 0.21 \\
+& 2048 & \texttt{hf\_eager} & 680.4 $\pm$ 12.5 & 9.06 $\pm$ 0.08 & 7.489 $\pm$ 0.115 & 46.7 & 0.12 \\
+& 2048 & \texttt{vllm} & 623.0 $\pm$ 6.8 & 16.42 $\pm$ 0.03 & 4.390 $\pm$ 0.010 & 84.4 & 0.21 \\
+& 8192 & \texttt{hf\_eager} & 3259.3 $\pm$ 46.1 & 8.96 $\pm$ 0.03 & 7.676 $\pm$ 0.124 & 47.9 & 0.12 \\
+& 8192 & \texttt{vllm} & 2643.0 $\pm$ 8.9 & 16.15 $\pm$ 0.05 & 4.450 $\pm$ 0.019 & 84.5 & 0.21 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -301,7 +301,7 @@ At $N=512$, the KV cache requires $56\,\text{MB}$, adding negligible overhead ($
 In \texttt{bitsandbytes}, 4-bit NormalFloat parameters are dynamically dequantized into 16-bit floating-point registers immediately prior to computation. In dense Transformer layers, where weights are consumed by large matrix multiplications, the reduction in memory traffic (fetching 4 bits per weight instead of 16 bits) substantially outweighs the ALU cycles required for on-the-fly dequantization, accelerating \texttt{Falcon3-7B} decode from $14.19$ to $18.58\,\text{tok/s}$ at 8K context. However, in recurrent SSM blocks, weight tensors are distributed across multiple smaller projection matrices, gating operations, and discretization parameters. In eager execution, dequantizing these fragmented tensors introduces additional kernel launch overhead, higher register pressure, and reduced memory coalescing, which outweighs the bandwidth savings and slows SSM decode by $25\%\text{--}26\%$.
 
 \subsection{Trade-Offs of Branch-Aware Mixed-Precision Quantization}
-In \texttt{Falcon-H1-7B}, \texttt{int4\_mixed\_ssm} protects Mamba projections in BF16 while quantizing Attention and MLP layers to NF4, compressing weights by 53.4\% ($14.48 \to 6.74\,\text{GB}$). While this protects recurrent state transitions from numerical drift, it achieves only a modest 15\% lower KL divergence relative to uniform INT4 ($0.094 \pm 0.006$ vs.\ $0.111 \pm 0.009$, a difference of $\approx 1.5$ combined standard errors), while relative $\Delta$PPL differences ($+3.36\%$ vs.\ $+4.78\%$) fall within overlapping standard errors. This occurs because the Attention and SwiGLU MLP blocks account for the majority of parameter volume and activation dynamic range; quantizing them introduces the dominant share of output distribution distortion. Furthermore, retaining $1.87\,\text{GB}$ of additional BF16 weights increases DRAM read volume per token, making mixed-SSM less energy-efficient ($8.16$ vs.\ $7.30\,\text{J/tok}$) than uniform INT4 at 8K context. Moreover, peak prefill VRAM reaches $8{,}080\,\text{MB}$ at 8K, demonstrating that mixed-precision hybrid models do not fit on 8\,GB GPUs under standard allocators.
+In \texttt{Falcon-H1-7B}, \texttt{int4\_mixed\_ssm} protects Mamba projections in BF16 while quantizing Attention and MLP layers to NF4, compressing weights by 53.4\% ($14.48 \to 6.74\,\text{GB}$). While this protects recurrent state transitions from numerical drift and achieves a 17.4\% lower KL divergence relative to uniform INT4 ($0.091 \pm 0.004$ vs.\ $0.110 \pm 0.006$, a difference of $\approx 3.0$ combined standard errors across $2{,}179$ tokens), relative $\Delta$PPL differences ($+1.96\%$ vs.\ $+2.38\%$) fall within overlapping passage-level standard errors. This occurs because the Attention and SwiGLU MLP blocks account for the majority of parameter volume and activation dynamic range; quantizing them introduces the dominant share of output distribution distortion. Furthermore, retaining $1.87\,\text{GB}$ of additional BF16 weights increases DRAM read volume per token, making mixed-SSM less energy-efficient ($8.16$ vs.\ $7.30\,\text{J/tok}$) than uniform INT4 at 8K context. Moreover, peak prefill VRAM reaches $8{,}080\,\text{MB}$ at 8K, demonstrating that mixed-precision hybrid models do not fit on 8\,GB GPUs under standard allocators.
 
 \section{Practical Systems Guidelines for Deploying Hybrid SSMs}
 \begin{enumerate}
@@ -315,17 +315,17 @@ In \texttt{Falcon-H1-7B}, \texttt{int4\_mixed\_ssm} protects Mamba projections i
     \item \textbf{Single GPU Architecture:} Benchmarks were gathered exclusively on NVIDIA L4 GPUs (24\,GB GDDR6, Ada Lovelace architecture, 72\,W TDP). Datacenter GPUs with high-bandwidth memory (such as NVIDIA H100 with HBM3 or A100 with HBM2e) exhibit higher compute-to-bandwidth ratios, which will shift crossover boundaries.
     \item \textbf{Single-Stream Batch Size ($B=1$):} Sweeps were conducted at batch size 1 to isolate memory-bandwidth-bound decode scaling. Under high-concurrency continuous batching ($B \ge 16$), execution shifts toward the compute-bound regime where Transformer KV caches scale as $O(B \cdot N)$ while SSM states scale as $O(B \cdot d_{\mathrm{state}})$.
     \item \textbf{Scope of Quantization Recipes:} We evaluated zero-calibration NormalFloat4 (NF4 via \texttt{bitsandbytes}). Advanced post-training calibration methods (such as AWQ, GPTQ) and native 8-bit floating-point Tensor Core formats (FP8 GEMMs) were not evaluated.
-    \item \textbf{Probe Benchmark Independence:} The 200-item multiple-choice probe contains only 5 unique underlying questions each in the systems and Arabic domains across option permutations. Items are therefore not statistically independent, and binomial standard errors overstate independence. Probe accuracy represents a coarse functional check for catastrophic collapse rather than a comprehensive language benchmark.
+    \item \textbf{Zero-Shot Benchmark Scope:} While the 200-item multiple-choice benchmark consists of 200 unique questions across four domains (arithmetic, systems/ML concepts, Arabic/UAE knowledge, and multi-needle recall), it is a targeted zero-shot evaluation suite rather than an exhaustive multi-thousand-item academic benchmark such as full MMLU or GSM8K.
     \item \textbf{Analytical MBU Approximation:} MBU is estimated analytically from model configuration parameters and decode throughput against the 300\,GB/s peak bandwidth. It does not measure physical DRAM traffic via hardware performance counters and ignores activation and logit memory transactions.
     \item \textbf{Container-Dependent Idle Power Baseline:} Pre-load idle power varied across serverless container instances ($13.5\,\text{W}\text{--}35.4\,\text{W}$). Consequently, dynamic Joules per token is reported as a secondary metric; total Joules per token is the primary metric.
-    \item \textbf{Evaluation Corpus Scale:} Perplexity and KL divergence were evaluated over a bilingual 6-passage corpus (769--1,223 scored tokens). Standard errors are calculated across passages ($n=6$). While adequate to detect relative distribution drift, small sample size explains anomalous negative $\Delta$PPL values ($-3.31\%$) for \texttt{Falcon3-7B} INT4.
-    \item \textbf{Single Experimental Session:} All reported measurements were gathered in a single dedicated 5-trial experimental session on Modal serverless instances.
+    \item \textbf{Evaluation Corpus Scale:} Perplexity and KL divergence were evaluated over a bilingual 24-passage corpus ($2{,}179\text{--}4{,}511$ scored tokens). Standard errors are calculated across passages ($n=24$) for $\Delta$PPL and across tokens for KL divergence. Because perplexity evaluates only ground-truth token probabilities, full-vocabulary KL divergence provides a more sensitive measure of quantization drift than passage perplexity.
+    \item \textbf{Single Experimental Session:} All reported measurements were gathered in a dedicated 5-trial experimental campaign on Modal serverless instances.
 \end{itemize}
 
 \section{Reproducibility \& Open Science}
 To facilitate full verification and reproduction of our empirical findings, all artifacts, benchmark configurations, and telemetry traces are publicly available:
 \begin{itemize}
-    \item \textbf{Software Environment:} NVIDIA driver 610.57.04, CUDA 12.4, PyTorch 2.5.1+cu124, Hugging Face \texttt{transformers} 4.57.6, \texttt{mamba\_ssm} 2.3.1, \texttt{causal\_conv1d} 1.7.0, \texttt{flash\_attn} 2.8.3.post2, \texttt{bitsandbytes} 0.50.2, and \texttt{vLLM} v1 (vLLM 0.32.0 in container). Runtime verification confirmed fused Mamba kernels were active (\texttt{fused\_kernels\_active: true}).
+    \item \textbf{Software Environment:} NVIDIA driver 610.57.04; HF eager benchmarks ran on CUDA 12.4, PyTorch 2.5.1+cu124, Hugging Face \texttt{transformers} 4.57.6, \texttt{mamba\_ssm} 2.3.1, \texttt{causal\_conv1d} 1.7.0, \texttt{flash\_attn} 2.8.3.post2, and \texttt{bitsandbytes} 0.50.2; \texttt{vLLM} benchmarks ran on \texttt{vLLM} v1 (0.32.0, PyTorch 2.13.0+cu130, \texttt{transformers} 5.19.0). Runtime verification confirmed fused Mamba kernels were active (\texttt{fused\_kernels\_active: true}).
     \item \textbf{vLLM Configuration:} CUDA graph capture enabled; serving flags configured with \texttt{enable\_prefix\_caching} = \texttt{False}, \texttt{max\_num\_seqs} = \texttt{8}, and \texttt{gpu\_memory\_utilization} = \texttt{0.92}. To resolve JIT compilation issues on CUDA 12.4 without \texttt{nvcc}, the FlashInfer sampler was disabled via \texttt{VLLM\_USE\_FLASHINFER\_SAMPLER=0}.
     \item \textbf{Model Revision Hashes:}
     \begin{itemize}
@@ -342,7 +342,7 @@ Our controlled evaluation across TII's 7B architectural triad provides a clear s
     \item In standard eager PyTorch execution, \texttt{Falcon3-7B} outperforms both SSM models across all context lengths up to 16K, but this gap mostly reflects sequential kernel launch overhead in eager execution.
     \item Serving with CUDA graphs in \texttt{vLLM} eliminates launch stalls, boosting SSM throughput by $1.8\text{--}1.9\times$ and elevating analytical MBU from $\sim 46\%$ to $\sim 84\%$. At 8K context under \texttt{vLLM}, \texttt{Falcon3-Mamba-7B} is fastest and most energy-efficient, leading \texttt{Falcon3-7B} by 4.4\% in speed and 4.5\% in energy efficiency, while hybrid \texttt{Falcon-H1-7B} trails \texttt{Falcon3-7B} by about 2.4\%.
     \item In memory scaling, \texttt{Falcon-H1-7B} reaches peak VRAM near-parity with \texttt{Falcon3-7B} around 2K tokens and saves $1{,}671\,\text{MB}$ at 16K context, maintaining flat decode throughput while \texttt{Falcon3-7B} decode drops by 27.6\% due to expanding KV cache traffic.
-    \item Branch-aware mixed precision (\texttt{int4\_mixed\_ssm}) compresses hybrid weights by 53.4\% with a modest $\sim 15\%$ lower KL divergence than uniform INT4, but increases decode energy at 8K and exceeds 8\,GB peak VRAM, failing to fit into an 8\,GB GPU allocator.
+    \item Branch-aware mixed precision (\texttt{int4\_mixed\_ssm}) compresses hybrid weights by 53.4\% with a 17.4\% lower KL divergence than uniform INT4 ($0.091 \pm 0.004$ vs.\ $0.110 \pm 0.006$, $\approx 3.0$ combined standard errors), but increases decode energy at 8K and exceeds 8\,GB peak VRAM, failing to fit into an 8\,GB GPU allocator.
 \end{enumerate}
 These findings demonstrate that parallel hybrid architectures provide tangible memory and throughput scaling benefits at long sequence lengths when paired with graph-capturing serving runtimes.
 

@@ -380,7 +380,7 @@ def main():
             "tiiuae/Falcon3-7B-Instruct": ArchitectureProfile(
                 model_id="tiiuae/Falcon3-7B-Instruct",
                 arch_type="transformer",
-                num_params=7_450_000_000,
+                num_params=7_455_129_600,
                 bytes_per_param=2.0,
                 num_layers=28,
                 num_kv_heads=4,
@@ -390,7 +390,7 @@ def main():
             "tiiuae/Falcon3-Mamba-7B-Instruct": ArchitectureProfile(
                 model_id="tiiuae/Falcon3-Mamba-7B-Instruct",
                 arch_type="mamba",
-                num_params=7_280_000_000,
+                num_params=7_285_350_400,
                 bytes_per_param=2.0,
                 num_layers=64,
                 num_kv_heads=0,
@@ -400,7 +400,7 @@ def main():
             "tiiuae/Falcon-H1-7B-Instruct": ArchitectureProfile(
                 model_id="tiiuae/Falcon-H1-7B-Instruct",
                 arch_type="hybrid",
-                num_params=7_590_000_000,
+                num_params=7_589_838_848,
                 bytes_per_param=2.0,
                 num_layers=44,
                 num_kv_heads=4,

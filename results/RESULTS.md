@@ -14,7 +14,7 @@ superseded and several v1 headline claims did NOT replicate — see §6.
 - Energy: NVML board power sampled at 50 Hz plus NVML cumulative energy counter. **Total J/tok is the primary metric.** Dynamic J/tok subtracts a pre-load idle floor that varied from 13.5 W to 35.4 W across containers (post-load idle 36–44 W), so dynamic J/tok is reported as secondary only. Raw traces: `results/raw_50hz_*_traces.json`.
 - Memory: two quantities are reported. (1) **Analytical persistent state** = KV cache + SSM conv/recurrent state from model config. (2) **Peak ΔVRAM** = `torch.cuda.max_memory_allocated` − weights, which includes transient prefill workspace/activations.
 - MBU is an **analytical estimate**: bytes/token = weights + KV(avg seq) + 2×SSM state, × decode tok/s ÷ 300 GB/s. It ignores activations, logits and kernel inefficiency, so treat it as a model-based estimate rather than a hardware counter.
-- Quality: dense PPL and token-level KL(P_bf16‖Q) on a 6-passage bilingual (EN/AR) corpus — 769 to 1,223 scored tokens depending on tokenizer; SE for ΔPPL is passage-level (n=6), SE for KL is token-level. Plus a **200-item templated multiple-choice probe** (next-token A/B/C/D scoring) over 4 domains × 50: math (50 generated linear equations), systems (5 unique questions × 10 option rotations), Arabic/UAE (5 unique × 10 rotations), key-value recall (50 generated). **Systems and Arabic domains therefore have only 5 unique questions each — the probe is NOT an independent 200-question benchmark.** Binomial SE is reported but overstates independence. Treat accuracy as a coarse functional check.
+- Quality: dense PPL and token-level KL(P_bf16‖Q) on a **24-passage bilingual (12 EN / 12 AR) corpus** — 2,179 to 4,511 scored tokens depending on tokenizer (`Falcon-H1-7B`: 2,179; `Falcon3-7B`: 3,751; `Falcon3-Mamba-7B`: 4,511); SE for ΔPPL is passage-level (n=24 passages), SE for KL is token-level. Plus a **200-unique-item deterministic zero-shot multiple-choice benchmark** (next-token A/B/C/D scoring, zero template/option-rotation repetition) over 4 domains × 50 unique items: math (50 unique linear equations), systems & ML architecture (50 unique conceptual/quantitative questions), Arabic/UAE & science knowledge (50 unique questions), and multi-needle key-value recall (50 unique registries). Binomial SE ($\sqrt{p(1-p)/200}$) is reported across the 200 independent items.
 
 ## 1. HF eager BF16 crossover (n=5)
 | Model | Ctx | TTFT ms | Decode tok/s | Persist. state MB (analytical) | Peak VRAM MB | Total J/tok |
@@ -47,22 +47,22 @@ Supported statements:
 ## 2. Quantization ablation (n=5 latency; quality metrics context-independent)
 | Model | Precision | Weights MB | ΔPPL % ±SE | KL ±SE | Top-1 % | Probe acc % ±SE | Decode tok/s @8K | J/tok @8K | Peak VRAM @8K MB | TTFT @2K ms |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Falcon3-7B | bf16 | 14220.4 | 0 | 0 | 100 | 70.0±3.2 | 14.19±0.03 | 5.074±0.012 | 16532.8 | 552.0 |
-| Falcon3-7B | int4_uniform | 4808.4 | −3.31±1.99 | 0.175±0.020 | 83.0 | 64.0±3.4 | 18.58±0.09 | 3.851±0.021 | 7120.8 | 634.1 |
-| Falcon3-Mamba-7B | bf16 | 13896.7 | 0 | 0 | 100 | 48.0±3.5 | 9.51±0.06 | 7.035±0.063 | 17236.1 | 819.9 |
-| Falcon3-Mamba-7B | int4_uniform | 4359.0 | +3.29±1.15 | 0.074±0.004 | 88.5 | 53.0±3.5 | 7.29±0.02 | 6.635±0.021 | 7698.5 | 916.0 |
-| Falcon3-Mamba-7B | int4_mixed_ssm | 13880.7 | −0.43±0.20 | 0.005±0.0002 | 97.3 | 47.5±3.5 | 7.12±0.03 | 8.271±0.035 | 17220.1 | 838.5 |
-| Falcon-H1-7B | bf16 | 14477.3 | 0 | 0 | 100 | 85.0±2.5 | 8.96±0.03 | 7.676±0.124 | 15818.1 | 680.4 |
-| Falcon-H1-7B | int4_uniform | 4874.2 | +4.78±2.19 | 0.111±0.009 | 84.8 | 87.5±2.3 | 6.66±0.02 | 7.301±0.080 | 6215.0 | 736.4 |
-| Falcon-H1-7B | int4_mixed_ssm | 6739.7 | +3.36±1.83 | 0.094±0.006 | 86.0 | 87.0±2.4 | 6.64±0.05 | 8.162±0.086 | 8080.5 | 735.1 |
+| Falcon3-7B | bf16 | 14220.4 | 0 | 0 | 100 | 75.0±3.1 | 14.19±0.03 | 5.074±0.012 | 16532.8 | 552.0 |
+| Falcon3-7B | int4_uniform | 4808.4 | −2.86±1.94 | 0.169±0.009 | 82.2 | 71.0±3.2 | 18.58±0.09 | 3.851±0.021 | 7120.8 | 634.1 |
+| Falcon3-Mamba-7B | bf16 | 13896.7 | 0 | 0 | 100 | 50.0±3.5 | 9.51±0.06 | 7.035±0.063 | 17236.1 | 819.9 |
+| Falcon3-Mamba-7B | int4_uniform | 4359.0 | +2.95±0.85 | 0.063±0.002 | 88.3 | 55.5±3.5 | 7.29±0.02 | 6.635±0.021 | 7698.5 | 916.0 |
+| Falcon3-Mamba-7B | int4_mixed_ssm | 13880.7 | −0.28±0.21 | 0.005±0.0001 | 97.5 | 49.0±3.5 | 7.12±0.03 | 8.271±0.035 | 17220.1 | 838.5 |
+| Falcon-H1-7B | bf16 | 14477.3 | 0 | 0 | 100 | 90.0±2.1 | 8.96±0.03 | 7.676±0.124 | 15818.1 | 680.4 |
+| Falcon-H1-7B | int4_uniform | 4874.2 | +2.38±1.62 | 0.110±0.006 | 84.5 | 93.5±1.7 | 6.66±0.02 | 7.301±0.080 | 6215.0 | 736.4 |
+| Falcon-H1-7B | int4_mixed_ssm | 6739.7 | +1.96±1.18 | 0.091±0.004 | 85.6 | 93.0±1.8 | 6.64±0.05 | 8.162±0.086 | 8080.5 | 735.1 |
 
 Supported statements:
-- **No accuracy collapse.** Probe accuracy differences between precisions are within ~1–1.5 SE for every model (Mamba 48.0 → 53.0 → 47.5; H1 85.0 → 87.5 → 87.0). The v1 "80% → 40%" Mamba collapse (4/5 → 2/5) does not replicate.
+- **No accuracy collapse.** Probe accuracy differences across the 200 unique items remain within ~1–1.5 SE for every model (Mamba 50.0% → 55.5% → 49.0%; H1 90.0% → 93.5% → 93.0%; Falcon3 75.0% → 71.0%). The v1 "80% → 40%" Mamba collapse (4/5 → 2/5) does not replicate.
 - int4_mixed_ssm on Falcon3-Mamba-7B quantizes almost nothing (13,880.7 vs 13,896.7 MB) — it is essentially BF16 and is reported only as a control confirming that the skip-list protects the SSM path (KL 0.005).
-- On Falcon-H1-7B, int4_mixed_ssm keeps Mamba projections in BF16 and NF4-quantizes attention/MLP: weights 14.48 → 6.74 GB (−53.4%). vs int4_uniform it has ~15% lower KL (0.094±0.006 vs 0.111±0.009; difference ≈1.5 combined SE — suggestive, not conclusive), lower ΔPPL (+3.36 vs +4.78, overlapping SE), slightly higher top-1 agreement (86.0 vs 84.8). It costs 1.87 GB more weight memory, and is **slower-or-equal and less energy-efficient** than uniform at 8K (8.16 vs 7.30 J/tok). TTFT is equal at 2K/8K (735 vs 736 ms; the 512 difference has std 212 ms and is noise).
+- On Falcon-H1-7B, int4_mixed_ssm keeps Mamba projections in BF16 and NF4-quantizes attention/MLP: weights 14.48 → 6.74 GB (−53.4%). vs int4_uniform it has **17.4% lower KL divergence** (0.091±0.004 vs 0.110±0.006; difference ≈ 2.95 combined SE across 2,179 tokens), lower ΔPPL (+1.96±1.18% vs +2.38±1.62%), and slightly higher top-1 agreement (85.6% vs 84.5%). It costs 1.87 GB more weight memory, and is **slower-or-equal and less energy-efficient** than uniform at 8K (8.16 vs 7.30 J/tok). TTFT is equal at 2K/8K (735 vs 736 ms; the 512 difference has std 212 ms and is noise).
 - Peak VRAM for H1 int4_mixed_ssm reaches 8,080 MB at 8K and 7,001 MB at 512 → **"fits on an 8 GB GPU" is not supported** (not tested; peak already exceeds 8 GB at 8K on this allocator).
 - bitsandbytes NF4 in HF eager slows the SSM models' decode (H1 9.0 → 6.6 tok/s, Mamba 9.5 → 7.1–7.3) while speeding up Falcon3-7B (14.2 → 18.6 tok/s at 8K, −24% J/tok).
-- Falcon3-7B int4_uniform ΔPPL is negative (−3.3±2.0%) — an artifact of the small 6-passage corpus; KL (0.175) is the more reliable fidelity signal and is the largest of all models.
+- Falcon3-7B int4_uniform ΔPPL is slightly negative (−2.86±1.94%) across the 24 passages; token-level KL (0.169±0.009) is the primary fidelity signal and is the largest of all models.
 
 ## 3. vLLM (CUDA graphs) vs HF eager (n=5, BF16)
 | Model | Ctx | Engine | TTFT ms | Decode tok/s | Total J/tok | MBU % (analytical) |
@@ -104,7 +104,7 @@ Pre-load idle floor per container: Falcon3 13.5–16.4 W; Mamba 33.4–35.4 W; H
 - L4 memory is GDDR6.
 
 ## 6. v1 claims that are withdrawn
-1. "Uniform INT4 collapses Falcon3-Mamba accuracy 80%→40%" — withdrawn (5-item probe; does not replicate at N=200 templated).
+1. "Uniform INT4 collapses Falcon3-Mamba accuracy 80%→40%" — withdrawn (5-item probe; does not replicate on the 200-unique-item benchmark).
 2. "int4_mixed_ssm: zero accuracy loss / 100% retained" — withdrawn; accuracy probe does not separate recipes; KL and ΔPPL are non-zero.
 3. "int4_mixed_ssm recovers Mamba" as a compression recipe — reframed as a control (no compression).
 4. "Falcon-H1 overtakes Falcon3-7B at 8K under vLLM" — withdrawn; H1 trails by 2.4%. (Falcon3-Mamba-7B does lead.)

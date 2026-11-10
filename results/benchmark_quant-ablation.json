@@ -30,20 +30,20 @@
     "joules_per_token_total_std": 0.0343,
     "joules_per_token_dynamic": 3.5427,
     "joules_per_token_dynamic_std": 0.0294,
-    "eval_tokens_count": 1054,
-    "eval_ppl": 19.27,
+    "eval_tokens_count": 3751,
+    "eval_ppl": 14.4282,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 70.0,
-    "task_accuracy_se_pct": 3.24,
+    "task_accuracy_pct": 75.0,
+    "task_accuracy_se_pct": 3.06,
     "domain_accuracy_pct": {
       "math": 34.0,
-      "systems": 58.0,
-      "arabic": 88.0,
+      "systems": 96.0,
+      "arabic": 70.0,
       "recall": 100.0
     },
     "environment": {
@@ -61,7 +61,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T20:35:32.004732",
@@ -94,20 +95,20 @@
     "joules_per_token_total_std": 0.0109,
     "joules_per_token_dynamic": 3.6567,
     "joules_per_token_dynamic_std": 0.0304,
-    "eval_tokens_count": 1054,
-    "eval_ppl": 19.27,
+    "eval_tokens_count": 3751,
+    "eval_ppl": 14.4282,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 70.0,
-    "task_accuracy_se_pct": 3.24,
+    "task_accuracy_pct": 75.0,
+    "task_accuracy_se_pct": 3.06,
     "domain_accuracy_pct": {
       "math": 34.0,
-      "systems": 58.0,
-      "arabic": 88.0,
+      "systems": 96.0,
+      "arabic": 70.0,
       "recall": 100.0
     },
     "environment": {
@@ -125,7 +126,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T20:37:39.084075",
@@ -158,20 +160,20 @@
     "joules_per_token_total_std": 0.0115,
     "joules_per_token_dynamic": 4.1141,
     "joules_per_token_dynamic_std": 0.0033,
-    "eval_tokens_count": 1054,
-    "eval_ppl": 19.27,
+    "eval_tokens_count": 3751,
+    "eval_ppl": 14.4282,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 70.0,
-    "task_accuracy_se_pct": 3.24,
+    "task_accuracy_pct": 75.0,
+    "task_accuracy_se_pct": 3.06,
     "domain_accuracy_pct": {
       "math": 34.0,
-      "systems": 58.0,
-      "arabic": 88.0,
+      "systems": 96.0,
+      "arabic": 70.0,
       "recall": 100.0
     },
     "environment": {
@@ -189,7 +191,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T20:41:46.208385",
@@ -222,20 +225,20 @@
     "joules_per_token_total_std": 0.1101,
     "joules_per_token_dynamic": 3.4451,
     "joules_per_token_dynamic_std": 0.1146,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 9.0332,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.4936,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 48.0,
-    "task_accuracy_se_pct": 3.53,
+    "task_accuracy_pct": 50.0,
+    "task_accuracy_se_pct": 3.54,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 82.0,
+      "systems": 52.0,
+      "arabic": 74.0,
       "recall": 50.0
     },
     "environment": {
@@ -253,7 +256,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T20:43:02.294427",
@@ -286,20 +290,20 @@
     "joules_per_token_total_std": 0.0836,
     "joules_per_token_dynamic": 3.2539,
     "joules_per_token_dynamic_std": 0.0761,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 9.0332,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.4936,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 48.0,
-    "task_accuracy_se_pct": 3.53,
+    "task_accuracy_pct": 50.0,
+    "task_accuracy_se_pct": 3.54,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 82.0,
+      "systems": 52.0,
+      "arabic": 74.0,
       "recall": 50.0
     },
     "environment": {
@@ -317,7 +321,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T20:46:12.126192",
@@ -350,20 +355,20 @@
     "joules_per_token_total_std": 0.0626,
     "joules_per_token_dynamic": 3.5234,
     "joules_per_token_dynamic_std": 0.0546,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 9.0332,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.4936,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 48.0,
-    "task_accuracy_se_pct": 3.53,
+    "task_accuracy_pct": 50.0,
+    "task_accuracy_se_pct": 3.54,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 82.0,
+      "systems": 52.0,
+      "arabic": 74.0,
       "recall": 50.0
     },
     "environment": {
@@ -381,7 +386,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T20:51:17.529208",
@@ -414,20 +420,20 @@
     "joules_per_token_total_std": 0.2134,
     "joules_per_token_dynamic": 3.7113,
     "joules_per_token_dynamic_std": 0.2338,
-    "eval_tokens_count": 769,
-    "eval_ppl": 33.7127,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 37.7682,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 85.0,
-    "task_accuracy_se_pct": 2.52,
+    "task_accuracy_pct": 90.0,
+    "task_accuracy_se_pct": 2.12,
     "domain_accuracy_pct": {
       "math": 72.0,
-      "systems": 68.0,
-      "arabic": 100.0,
+      "systems": 94.0,
+      "arabic": 94.0,
       "recall": 100.0
     },
     "environment": {
@@ -445,7 +451,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T20:52:34.858942",
@@ -478,20 +485,20 @@
     "joules_per_token_total_std": 0.1146,
     "joules_per_token_dynamic": 4.1919,
     "joules_per_token_dynamic_std": 0.1362,
-    "eval_tokens_count": 769,
-    "eval_ppl": 33.7127,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 37.7682,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 85.0,
-    "task_accuracy_se_pct": 2.52,
+    "task_accuracy_pct": 90.0,
+    "task_accuracy_se_pct": 2.12,
     "domain_accuracy_pct": {
       "math": 72.0,
-      "systems": 68.0,
-      "arabic": 100.0,
+      "systems": 94.0,
+      "arabic": 94.0,
       "recall": 100.0
     },
     "environment": {
@@ -509,7 +516,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T20:55:45.219674",
@@ -542,20 +550,20 @@
     "joules_per_token_total_std": 0.1243,
     "joules_per_token_dynamic": 4.3408,
     "joules_per_token_dynamic_std": 0.1228,
-    "eval_tokens_count": 769,
-    "eval_ppl": 33.7127,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 37.7682,
     "ppl_delta_pct": 0.0,
     "ppl_delta_se_pct": 0.0,
     "kl_div_vs_bf16": 0.0,
     "kl_div_se": 0.0,
     "top1_agree_pct": 100.0,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 85.0,
-    "task_accuracy_se_pct": 2.52,
+    "task_accuracy_pct": 90.0,
+    "task_accuracy_se_pct": 2.12,
     "domain_accuracy_pct": {
       "math": 72.0,
-      "systems": 68.0,
-      "arabic": 100.0,
+      "systems": 94.0,
+      "arabic": 94.0,
       "recall": 100.0
     },
     "environment": {
@@ -573,7 +581,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:13:45.385595",
@@ -606,20 +615,20 @@
     "joules_per_token_total_std": 0.0135,
     "joules_per_token_dynamic": 2.3918,
     "joules_per_token_dynamic_std": 0.0094,
-    "eval_tokens_count": 1054,
-    "eval_ppl": 18.632,
-    "ppl_delta_pct": -3.31,
-    "ppl_delta_se_pct": 1.99,
-    "kl_div_vs_bf16": 0.17513,
-    "kl_div_se": 0.01974,
-    "top1_agree_pct": 83.02,
+    "eval_tokens_count": 3751,
+    "eval_ppl": 14.0161,
+    "ppl_delta_pct": -2.86,
+    "ppl_delta_se_pct": 1.94,
+    "kl_div_vs_bf16": 0.16914,
+    "kl_div_se": 0.00873,
+    "top1_agree_pct": 82.19,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 64.0,
-    "task_accuracy_se_pct": 3.39,
+    "task_accuracy_pct": 71.0,
+    "task_accuracy_se_pct": 3.21,
     "domain_accuracy_pct": {
-      "math": 34.0,
-      "systems": 56.0,
-      "arabic": 88.0,
+      "math": 40.0,
+      "systems": 96.0,
+      "arabic": 70.0,
       "recall": 78.0
     },
     "environment": {
@@ -637,7 +646,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:14:26.610155",
@@ -670,20 +680,20 @@
     "joules_per_token_total_std": 0.031,
     "joules_per_token_dynamic": 2.493,
     "joules_per_token_dynamic_std": 0.0281,
-    "eval_tokens_count": 1054,
-    "eval_ppl": 18.632,
-    "ppl_delta_pct": -3.31,
-    "ppl_delta_se_pct": 1.99,
-    "kl_div_vs_bf16": 0.17513,
-    "kl_div_se": 0.01974,
-    "top1_agree_pct": 83.02,
+    "eval_tokens_count": 3751,
+    "eval_ppl": 14.0161,
+    "ppl_delta_pct": -2.86,
+    "ppl_delta_se_pct": 1.94,
+    "kl_div_vs_bf16": 0.16914,
+    "kl_div_se": 0.00873,
+    "top1_agree_pct": 82.19,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 64.0,
-    "task_accuracy_se_pct": 3.39,
+    "task_accuracy_pct": 71.0,
+    "task_accuracy_se_pct": 3.21,
     "domain_accuracy_pct": {
-      "math": 34.0,
-      "systems": 56.0,
-      "arabic": 88.0,
+      "math": 40.0,
+      "systems": 96.0,
+      "arabic": 70.0,
       "recall": 78.0
     },
     "environment": {
@@ -701,7 +711,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:15:28.603219",
@@ -734,20 +745,20 @@
     "joules_per_token_total_std": 0.021,
     "joules_per_token_dynamic": 2.8401,
     "joules_per_token_dynamic_std": 0.0141,
-    "eval_tokens_count": 1054,
-    "eval_ppl": 18.632,
-    "ppl_delta_pct": -3.31,
-    "ppl_delta_se_pct": 1.99,
-    "kl_div_vs_bf16": 0.17513,
-    "kl_div_se": 0.01974,
-    "top1_agree_pct": 83.02,
+    "eval_tokens_count": 3751,
+    "eval_ppl": 14.0161,
+    "ppl_delta_pct": -2.86,
+    "ppl_delta_se_pct": 1.94,
+    "kl_div_vs_bf16": 0.16914,
+    "kl_div_se": 0.00873,
+    "top1_agree_pct": 82.19,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 64.0,
-    "task_accuracy_se_pct": 3.39,
+    "task_accuracy_pct": 71.0,
+    "task_accuracy_se_pct": 3.21,
     "domain_accuracy_pct": {
-      "math": 34.0,
-      "systems": 56.0,
-      "arabic": 88.0,
+      "math": 40.0,
+      "systems": 96.0,
+      "arabic": 70.0,
       "recall": 78.0
     },
     "environment": {
@@ -765,7 +776,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:18:22.769791",
@@ -798,20 +810,20 @@
     "joules_per_token_total_std": 0.0845,
     "joules_per_token_dynamic": 1.5566,
     "joules_per_token_dynamic_std": 0.0945,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 9.3306,
-    "ppl_delta_pct": 3.29,
-    "ppl_delta_se_pct": 1.15,
-    "kl_div_vs_bf16": 0.07447,
-    "kl_div_se": 0.0038,
-    "top1_agree_pct": 88.47,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.6848,
+    "ppl_delta_pct": 2.95,
+    "ppl_delta_se_pct": 0.85,
+    "kl_div_vs_bf16": 0.06324,
+    "kl_div_se": 0.00174,
+    "top1_agree_pct": 88.27,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 53.0,
-    "task_accuracy_se_pct": 3.53,
+    "task_accuracy_pct": 55.5,
+    "task_accuracy_se_pct": 3.51,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 78.0,
+      "systems": 52.0,
+      "arabic": 72.0,
       "recall": 74.0
     },
     "environment": {
@@ -829,7 +841,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:20:00.052530",
@@ -862,20 +875,20 @@
     "joules_per_token_total_std": 0.0368,
     "joules_per_token_dynamic": 1.6337,
     "joules_per_token_dynamic_std": 0.019,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 9.3306,
-    "ppl_delta_pct": 3.29,
-    "ppl_delta_se_pct": 1.15,
-    "kl_div_vs_bf16": 0.07447,
-    "kl_div_se": 0.0038,
-    "top1_agree_pct": 88.47,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.6848,
+    "ppl_delta_pct": 2.95,
+    "ppl_delta_se_pct": 0.85,
+    "kl_div_vs_bf16": 0.06324,
+    "kl_div_se": 0.00174,
+    "top1_agree_pct": 88.27,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 53.0,
-    "task_accuracy_se_pct": 3.53,
+    "task_accuracy_pct": 55.5,
+    "task_accuracy_se_pct": 3.51,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 78.0,
+      "systems": 52.0,
+      "arabic": 72.0,
       "recall": 74.0
     },
     "environment": {
@@ -893,7 +906,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:22:04.122914",
@@ -926,20 +940,20 @@
     "joules_per_token_total_std": 0.0206,
     "joules_per_token_dynamic": 2.0475,
     "joules_per_token_dynamic_std": 0.0173,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 9.3306,
-    "ppl_delta_pct": 3.29,
-    "ppl_delta_se_pct": 1.15,
-    "kl_div_vs_bf16": 0.07447,
-    "kl_div_se": 0.0038,
-    "top1_agree_pct": 88.47,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.6848,
+    "ppl_delta_pct": 2.95,
+    "ppl_delta_se_pct": 0.85,
+    "kl_div_vs_bf16": 0.06324,
+    "kl_div_se": 0.00174,
+    "top1_agree_pct": 88.27,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 53.0,
-    "task_accuracy_se_pct": 3.53,
+    "task_accuracy_pct": 55.5,
+    "task_accuracy_se_pct": 3.51,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 78.0,
+      "systems": 52.0,
+      "arabic": 72.0,
       "recall": 74.0
     },
     "environment": {
@@ -957,7 +971,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:24:32.916412",
@@ -990,20 +1005,20 @@
     "joules_per_token_total_std": 0.018,
     "joules_per_token_dynamic": 3.4783,
     "joules_per_token_dynamic_std": 0.0098,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 8.9939,
-    "ppl_delta_pct": -0.43,
-    "ppl_delta_se_pct": 0.2,
-    "kl_div_vs_bf16": 0.00529,
-    "kl_div_se": 0.00024,
-    "top1_agree_pct": 97.3,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.4756,
+    "ppl_delta_pct": -0.28,
+    "ppl_delta_se_pct": 0.21,
+    "kl_div_vs_bf16": 0.00448,
+    "kl_div_se": 0.00012,
+    "top1_agree_pct": 97.5,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 47.5,
+    "task_accuracy_pct": 49.0,
     "task_accuracy_se_pct": 3.53,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 80.0,
+      "systems": 50.0,
+      "arabic": 72.0,
       "recall": 50.0
     },
     "environment": {
@@ -1021,7 +1036,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:26:10.709808",
@@ -1054,20 +1070,20 @@
     "joules_per_token_total_std": 0.0384,
     "joules_per_token_dynamic": 3.6596,
     "joules_per_token_dynamic_std": 0.0307,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 8.9939,
-    "ppl_delta_pct": -0.43,
-    "ppl_delta_se_pct": 0.2,
-    "kl_div_vs_bf16": 0.00529,
-    "kl_div_se": 0.00024,
-    "top1_agree_pct": 97.3,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.4756,
+    "ppl_delta_pct": -0.28,
+    "ppl_delta_se_pct": 0.21,
+    "kl_div_vs_bf16": 0.00448,
+    "kl_div_se": 0.00012,
+    "top1_agree_pct": 97.5,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 47.5,
+    "task_accuracy_pct": 49.0,
     "task_accuracy_se_pct": 3.53,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 80.0,
+      "systems": 50.0,
+      "arabic": 72.0,
       "recall": 50.0
     },
     "environment": {
@@ -1085,7 +1101,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:28:16.431246",
@@ -1118,20 +1135,20 @@
     "joules_per_token_total_std": 0.0348,
     "joules_per_token_dynamic": 3.9417,
     "joules_per_token_dynamic_std": 0.0301,
-    "eval_tokens_count": 1223,
-    "eval_ppl": 8.9939,
-    "ppl_delta_pct": -0.43,
-    "ppl_delta_se_pct": 0.2,
-    "kl_div_vs_bf16": 0.00529,
-    "kl_div_se": 0.00024,
-    "top1_agree_pct": 97.3,
+    "eval_tokens_count": 4511,
+    "eval_ppl": 6.4756,
+    "ppl_delta_pct": -0.28,
+    "ppl_delta_se_pct": 0.21,
+    "kl_div_vs_bf16": 0.00448,
+    "kl_div_se": 0.00012,
+    "top1_agree_pct": 97.5,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 47.5,
+    "task_accuracy_pct": 49.0,
     "task_accuracy_se_pct": 3.53,
     "domain_accuracy_pct": {
       "math": 24.0,
-      "systems": 36.0,
-      "arabic": 80.0,
+      "systems": 50.0,
+      "arabic": 72.0,
       "recall": 50.0
     },
     "environment": {
@@ -1149,7 +1166,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:32:06.840376",
@@ -1182,20 +1200,20 @@
     "joules_per_token_total_std": 0.0898,
     "joules_per_token_dynamic": 1.6254,
     "joules_per_token_dynamic_std": 0.0621,
-    "eval_tokens_count": 769,
-    "eval_ppl": 35.3249,
-    "ppl_delta_pct": 4.78,
-    "ppl_delta_se_pct": 2.19,
-    "kl_div_vs_bf16": 0.11107,
-    "kl_div_se": 0.00937,
-    "top1_agree_pct": 84.79,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 38.668,
+    "ppl_delta_pct": 2.38,
+    "ppl_delta_se_pct": 1.62,
+    "kl_div_vs_bf16": 0.11011,
+    "kl_div_se": 0.00546,
+    "top1_agree_pct": 84.53,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 87.5,
-    "task_accuracy_se_pct": 2.34,
+    "task_accuracy_pct": 93.5,
+    "task_accuracy_se_pct": 1.74,
     "domain_accuracy_pct": {
-      "math": 76.0,
-      "systems": 74.0,
-      "arabic": 100.0,
+      "math": 86.0,
+      "systems": 96.0,
+      "arabic": 92.0,
       "recall": 100.0
     },
     "environment": {
@@ -1213,7 +1231,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:33:50.563723",
@@ -1246,20 +1265,20 @@
     "joules_per_token_total_std": 0.0722,
     "joules_per_token_dynamic": 1.7673,
     "joules_per_token_dynamic_std": 0.0669,
-    "eval_tokens_count": 769,
-    "eval_ppl": 35.3249,
-    "ppl_delta_pct": 4.78,
-    "ppl_delta_se_pct": 2.19,
-    "kl_div_vs_bf16": 0.11107,
-    "kl_div_se": 0.00937,
-    "top1_agree_pct": 84.79,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 38.668,
+    "ppl_delta_pct": 2.38,
+    "ppl_delta_se_pct": 1.62,
+    "kl_div_vs_bf16": 0.11011,
+    "kl_div_se": 0.00546,
+    "top1_agree_pct": 84.53,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 87.5,
-    "task_accuracy_se_pct": 2.34,
+    "task_accuracy_pct": 93.5,
+    "task_accuracy_se_pct": 1.74,
     "domain_accuracy_pct": {
-      "math": 76.0,
-      "systems": 74.0,
-      "arabic": 100.0,
+      "math": 86.0,
+      "systems": 96.0,
+      "arabic": 92.0,
       "recall": 100.0
     },
     "environment": {
@@ -1277,7 +1296,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:35:59.699914",
@@ -1310,20 +1330,20 @@
     "joules_per_token_total_std": 0.0804,
     "joules_per_token_dynamic": 2.4285,
     "joules_per_token_dynamic_std": 0.0664,
-    "eval_tokens_count": 769,
-    "eval_ppl": 35.3249,
-    "ppl_delta_pct": 4.78,
-    "ppl_delta_se_pct": 2.19,
-    "kl_div_vs_bf16": 0.11107,
-    "kl_div_se": 0.00937,
-    "top1_agree_pct": 84.79,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 38.668,
+    "ppl_delta_pct": 2.38,
+    "ppl_delta_se_pct": 1.62,
+    "kl_div_vs_bf16": 0.11011,
+    "kl_div_se": 0.00546,
+    "top1_agree_pct": 84.53,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 87.5,
-    "task_accuracy_se_pct": 2.34,
+    "task_accuracy_pct": 93.5,
+    "task_accuracy_se_pct": 1.74,
     "domain_accuracy_pct": {
-      "math": 76.0,
-      "systems": 74.0,
-      "arabic": 100.0,
+      "math": 86.0,
+      "systems": 96.0,
+      "arabic": 92.0,
       "recall": 100.0
     },
     "environment": {
@@ -1341,7 +1361,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:38:44.753044",
@@ -1374,20 +1395,20 @@
     "joules_per_token_total_std": 0.0358,
     "joules_per_token_dynamic": 2.2246,
     "joules_per_token_dynamic_std": 0.0367,
-    "eval_tokens_count": 769,
-    "eval_ppl": 34.8467,
-    "ppl_delta_pct": 3.36,
-    "ppl_delta_se_pct": 1.83,
-    "kl_div_vs_bf16": 0.09423,
-    "kl_div_se": 0.00602,
-    "top1_agree_pct": 85.96,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 38.5067,
+    "ppl_delta_pct": 1.96,
+    "ppl_delta_se_pct": 1.18,
+    "kl_div_vs_bf16": 0.09091,
+    "kl_div_se": 0.00345,
+    "top1_agree_pct": 85.64,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 87.0,
-    "task_accuracy_se_pct": 2.38,
+    "task_accuracy_pct": 93.0,
+    "task_accuracy_se_pct": 1.8,
     "domain_accuracy_pct": {
-      "math": 74.0,
-      "systems": 74.0,
-      "arabic": 100.0,
+      "math": 84.0,
+      "systems": 96.0,
+      "arabic": 92.0,
       "recall": 100.0
     },
     "environment": {
@@ -1405,7 +1426,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:40:27.871600",
@@ -1438,20 +1460,20 @@
     "joules_per_token_total_std": 0.1296,
     "joules_per_token_dynamic": 2.4779,
     "joules_per_token_dynamic_std": 0.1011,
-    "eval_tokens_count": 769,
-    "eval_ppl": 34.8467,
-    "ppl_delta_pct": 3.36,
-    "ppl_delta_se_pct": 1.83,
-    "kl_div_vs_bf16": 0.09423,
-    "kl_div_se": 0.00602,
-    "top1_agree_pct": 85.96,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 38.5067,
+    "ppl_delta_pct": 1.96,
+    "ppl_delta_se_pct": 1.18,
+    "kl_div_vs_bf16": 0.09091,
+    "kl_div_se": 0.00345,
+    "top1_agree_pct": 85.64,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 87.0,
-    "task_accuracy_se_pct": 2.38,
+    "task_accuracy_pct": 93.0,
+    "task_accuracy_se_pct": 1.8,
     "domain_accuracy_pct": {
-      "math": 74.0,
-      "systems": 74.0,
-      "arabic": 100.0,
+      "math": 84.0,
+      "systems": 96.0,
+      "arabic": 92.0,
       "recall": 100.0
     },
     "environment": {
@@ -1469,7 +1491,8 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   },
   {
     "timestamp": "2026-10-31T21:42:37.435866",
@@ -1502,20 +1525,20 @@
     "joules_per_token_total_std": 0.0855,
     "joules_per_token_dynamic": 3.5015,
     "joules_per_token_dynamic_std": 0.0782,
-    "eval_tokens_count": 769,
-    "eval_ppl": 34.8467,
-    "ppl_delta_pct": 3.36,
-    "ppl_delta_se_pct": 1.83,
-    "kl_div_vs_bf16": 0.09423,
-    "kl_div_se": 0.00602,
-    "top1_agree_pct": 85.96,
+    "eval_tokens_count": 2179,
+    "eval_ppl": 38.5067,
+    "ppl_delta_pct": 1.96,
+    "ppl_delta_se_pct": 1.18,
+    "kl_div_vs_bf16": 0.09091,
+    "kl_div_se": 0.00345,
+    "top1_agree_pct": 85.64,
     "eval_tasks_n": 200,
-    "task_accuracy_pct": 87.0,
-    "task_accuracy_se_pct": 2.38,
+    "task_accuracy_pct": 93.0,
+    "task_accuracy_se_pct": 1.8,
     "domain_accuracy_pct": {
-      "math": 74.0,
-      "systems": 74.0,
-      "arabic": 100.0,
+      "math": 84.0,
+      "systems": 96.0,
+      "arabic": 92.0,
       "recall": 100.0
     },
     "environment": {
@@ -1533,6 +1556,7 @@
       },
       "memory_type": "GDDR6"
     },
-    "status": "ok"
+    "status": "ok",
+    "eval_passages_n": 24
   }
 ]
