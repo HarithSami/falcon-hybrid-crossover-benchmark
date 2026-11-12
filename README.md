@@ -1,6 +1,6 @@
 # Falcon 7B Architecture Crossover, Branch-Aware Quantization & vLLM Energy/MBU Telemetry
 
-[![Hardware: NVIDIA L4 24GB GDDR6](https://img.shields.io/badge/GPU-NVIDIA%20L4%2024GB%20GDDR6-76B900?logo=nvidia)](https://modal.com)
+[![Hardware: NVIDIA L4 24GB GDDR6](https://img.shields.io/badge/GPU-NVIDIA%20L4%2024GB%20GDDR6-76B900?logo=nvidia)](https://www.nvidia.com/en-us/data-center/l4/)
 [![Models: TII Falcon 7B Triad](https://img.shields.io/badge/Models-Falcon3%20%7C%20Mamba%20%7C%20Falcon--H1-blue)](https://huggingface.co/tiiuae)
 [![Telemetry: Informed by IEEE P1959/P1960](https://img.shields.io/badge/Telemetry-Informed%20by%20IEEE%20P1959%2FP1960-orange)](#4-open-source-vllm-energy--roofline-mfumbu-profiler)
 [![Author: Harith Ibrahim](https://img.shields.io/badge/Author-Harith%20Ibrahim-blue.svg)](https://orcid.org/0009-0008-2204-7324)
@@ -10,6 +10,17 @@
 
 **Author:** **Harith Ibrahim** ([ORCID: `0009-0008-2204-7324`](https://orcid.org/0009-0008-2204-7324) • [Google Scholar Profile](https://scholar.google.co.uk/citations?user=D0ZI6BoAAAAJ) • [GitHub Profile (@HarithSami)](https://github.com/HarithSami))  
 **Dataset Card:** [`results/DATASET_CARD.md`](results/DATASET_CARD.md) • **Single Source of Truth:** [`results/RESULTS.md`](results/RESULTS.md)
+
+**Links:** [Draft paper (PDF)](paper/falcon_7b_hybrid_crossover_paper.pdf) • [Telemetry dataset on Hugging Face](https://huggingface.co/datasets/HarithSami/falcon-7b-hybrid-crossover-telemetry) • [Discussion on the Falcon-H1-7B model page](https://huggingface.co/tiiuae/Falcon-H1-7B-Instruct/discussions/4)
+
+> This is an independent study. It is not affiliated with or endorsed by the Technology Innovation Institute (TII). The paper is a draft and has not been peer reviewed.
+
+## TL;DR
+
+- **Eager mode is misleading for SSM and hybrid models.** In Hugging Face eager mode, Falcon-H1-7B and Falcon3-Mamba-7B decode about 2x slower than Falcon3-7B. With CUDA graphs in vLLM v1 that gap closes: Mamba is 1.8x to 1.9x faster, and at 8K context it leads Falcon3-7B (17.27 vs 16.55 tok/s).
+- **H1 needs less state.** At 16K context, Falcon-H1-7B's persistent state is 771 MB against 1,792 MB for Falcon3-7B.
+- **24 GB tip.** vLLM v1's default `max_num_seqs=256` runs out of memory on an L4 for the Mamba-based models. Use `--max-num-seqs 8`.
+- **Mixed NF4 trades speed for fidelity.** Keeping Mamba projections in BF16 lowers KL divergence by 17.4% against uniform NF4 on H1, but is slower and uses more energy per token in bitsandbytes eager mode.
 
 An empirical hardware-efficiency, post-training quantization, and serving-engine study across the **Technology Innovation Institute's (TII) 7B architectural triad**:
 1. **Pure Transformer (GQA):** [`tiiuae/Falcon3-7B-Instruct`](https://huggingface.co/tiiuae/Falcon3-7B-Instruct) (28 layers)
@@ -89,8 +100,8 @@ Latency and energy metrics represent $n=5$ trials at 8K context (TTFT at 2K). Qu
 ### Key Observations
 - **No Catastrophic Breakdown:** Accuracy differences across precision configurations on the 200-unique-item benchmark remain within $\sim 1\text{--}1.5\text{ SE}$ for every model (`Falcon3-Mamba-7B`: $50.0\% \rightarrow 55.5\% \rightarrow 49.0\%$; `Falcon-H1-7B`: $90.0\% \rightarrow 93.5\% \rightarrow 93.0\%$).
 - **Control on Pure Mamba:** `int4_mixed_ssm` on pure Mamba quantizes almost no parameters ($13,880.7$ vs. $13,896.7\text{ MB}$), as Mamba has no non-recurrent attention/MLP layers. It acts as a control confirming that skipping `mamba` protects the SSM path ($\text{KL} = 0.005$).
-- **Trade-Offs on Parallel Hybrid (H1):** On `Falcon-H1-7B`, `int4_mixed_ssm` keeps Mamba projections in native BF16 and quantizes Attention/MLP projections to NF4, compressing weights from 14.48 GB to 6.74 GB ($-53.4\%$). Compared to uniform NF4, it achieves **17.4% lower KL divergence** ($0.091 \pm 0.004$ vs. $0.110 \pm 0.006$; difference $\approx 3.0$ combined SE across 2,179 scored tokens) and lower $\Delta$PPL ($+1.96 \pm 1.18\%$ vs. $+2.38 \pm 1.62\%$). However, it requires 1.87 GB more memory than uniform NF4 and is slower-or-equal and less energy-efficient at 8K context ($8.162$ vs. $7.301\text{ J/tok}$). TTFT is identical at 2K and 8K ($735.1$ vs. $736.4\text{ ms}$ at 2K).
-- **VRAM Footprint:** Peak VRAM for `Falcon-H1-7B` `int4_mixed_ssm` reaches 8,080.5 MB at 8K context and 7,001 MB at 512 context, exceeding 8 GB on standard PyTorch allocators.
+- **Trade-Offs on Parallel Hybrid (H1):** On `Falcon-H1-7B`, `int4_mixed_ssm` keeps Mamba projections in native BF16 and quantizes Attention/MLP projections to NF4, compressing weights from 14.48 GB to 6.74 GB ($-53.4\%$). Compared to uniform NF4, it achieves **17.4% lower KL divergence** ($0.091 \pm 0.004$ vs. $0.110 \pm 0.006$; difference $\approx 3.0$ combined SE across 2,179 scored tokens) and lower $\Delta$PPL ($+1.96 \pm 1.18\%$ vs. $+2.38 \pm 1.62\%$). However, it requires 1.87 GB more memory than uniform NF4 and is slower-or-equal and less energy-efficient at 8K context ($8.162$ vs. $7.301\text{ J/tok}$). TTFT at 2K is essentially unchanged ($735.1$ vs. $736.4\text{ ms}$).
+- **VRAM Footprint:** Peak VRAM for `Falcon-H1-7B` `int4_mixed_ssm` reaches 7,001 MB at 512 context and 8,080.5 MB at 8K context, against 6,215.0 MB for uniform NF4 at 8K.
 - **bitsandbytes Kernel Overhead:** In eager bitsandbytes, NF4 dequantization slows SSM decode throughput (`Falcon-H1-7B`: $8.96 \rightarrow 6.64\text{--}6.66\text{ tok/s}$; `Falcon3-Mamba-7B`: $9.51 \rightarrow 7.12\text{--}7.29\text{ tok/s}$) while accelerating `Falcon3-7B` ($14.19 \rightarrow 18.58\text{ tok/s}$, a $+30.9\%$ throughput boost and $-24\%$ reduction in total J/tok).
 - **Corpus Sensitivity:** `Falcon3-7B` `int4_uniform` $\Delta$PPL is slightly negative ($-2.86 \pm 1.94\%$) due to passage-level variance across the 24-passage corpus; token-level KL divergence ($0.169 \pm 0.009$) provides the more direct measure of logit distribution shift.
 
@@ -182,6 +193,8 @@ print(session.report.to_dict())
 2. **Analytical MBU Model:** Model Bandwidth Utilization is calculated analytically from model weights and sequence-dependent persistent state divided by peak hardware GDDR6 bandwidth (300 GB/s). It does not read hardware performance counters and omits activation, logit, and intermediate memory traffic.
 3. **Container Idle Floor Variation:** Datacenter container pre-load idle power varied across serverless instances from 13.5 W to 35.4 W (and post-load idle reached 36.1 W to 43.6 W). Total J/tok is the primary metric; dynamic J/tok is reported as secondary.
 4. **Batch Size Scope:** All measurements were conducted at batch size 1 (single-stream low-latency decode). Multi-sequence batching dynamics were not evaluated in the crossover sweep.
+5. **Different Software Stacks Across Engines:** The HF eager runs and the vLLM runs used different containers (CUDA 12.4, `torch==2.5.1`, `transformers==4.57.6` vs. `torch==2.13.0+cu130`, `transformers==5.19.0`; see Section 6). The engine comparison therefore also varies the software stack.
+6. **Launch-Overhead Attribution Is Inferred:** The explanation that the eager SSM deficit comes from kernel launch overhead is supported by the CUDA graph speedup and the low analytical MBU, but it was not isolated directly (for example with a profiler timeline or an eager-versus-graph test on one fixed stack).
 
 ---
 
@@ -270,6 +283,8 @@ python src/plot_results.py results/benchmark_vllm_mfu.json
 ---
 
 ## Citation
+
+If you use this work, please cite the draft below (or see [`CITATION.cff`](CITATION.cff)).
 
 ```bibtex
 @techreport{ibrahim2026falcon7bcrossover,
