@@ -150,7 +150,7 @@ def _plot_crossover_2x2(plt, rows: list[dict], out_dir: Path, stem: str):
     ax_ttft.set_ylabel("TTFT (ms ± std)")
     ax_ttft.grid(True, alpha=0.3)
 
-    plt.tight_layout()
+    plt.tight_layout(w_pad=2.2, h_pad=2.0)
     for ext in ("png", "pdf"):
         out_f = out_dir / f"{stem}_charts.{ext}"
         plt.savefig(out_f, dpi=300 if ext == "png" else None, bbox_inches="tight")
@@ -201,7 +201,7 @@ def _plot_quant_ablation_2x2(plt, rows: list[dict], out_dir: Path, stem: str):
     ]
     ax_dppl.legend(handles=handles, fontsize=7.0, loc="lower right", ncol=2)
     ax_dppl.axhline(0.0, color="gray", linestyle="--", linewidth=1, alpha=0.6)
-    ax_dppl.set_title("(a) Within-Model Perplexity Drift (ΔPPL%) vs. Weights")
+    ax_dppl.set_title("(a) Relative Perplexity Drift (ΔPPL%) vs. Weights")
     ax_dppl.set_xlabel("Static Weight Footprint (GiB)")
     ax_dppl.set_ylabel("Relative ΔPPL vs. Own BF16 (% ± SE)")
     ax_dppl.grid(True, alpha=0.3)
@@ -221,7 +221,7 @@ def _plot_quant_ablation_2x2(plt, rows: list[dict], out_dir: Path, stem: str):
         ax_kl.bar(offsets, kls, width=width, yerr=kl_ses, capsize=3, color=prec_colors[prec], label=prec, alpha=0.9)
     ax_kl.set_xticks(list(x_pos))
     ax_kl.set_xticklabels([a.replace(" (7B)", "") for a in arch_order], fontsize=8)
-    ax_kl.set_title("(b) Token-Level Logit KL(P_bf16 || Q) (± SE)")
+    ax_kl.set_title(r"(b) Token-Level Logit $\mathrm{KL}(P_{\mathrm{bf16}} \parallel Q)$ (± SE)")
     ax_kl.set_ylabel("Mean KL Divergence (nats, Lower is Better)")
     ax_kl.grid(True, axis="y", alpha=0.3)
     ax_kl.legend()
@@ -264,7 +264,7 @@ def _plot_quant_ablation_2x2(plt, rows: list[dict], out_dir: Path, stem: str):
     ax_eng.grid(True, axis="y", alpha=0.3)
     ax_eng.legend()
 
-    plt.tight_layout()
+    plt.tight_layout(w_pad=2.2, h_pad=2.0)
     for ext in ("png", "pdf"):
         out_f = out_dir / f"{stem}_charts.{ext}"
         plt.savefig(out_f, dpi=300 if ext == "png" else None, bbox_inches="tight")
@@ -372,7 +372,7 @@ def generate_vllm_comparison_plots(path: Path, data: dict):
     ax_ttft.set_ylabel("TTFT (ms, mean ± std)")
     ax_ttft.grid(True, alpha=0.3)
 
-    plt.tight_layout()
+    plt.tight_layout(w_pad=2.2, h_pad=2.0)
     for ext in ("png", "pdf"):
         out_f = out_dir / f"{path.stem}_charts.{ext}"
         plt.savefig(out_f, dpi=300 if ext == "png" else None, bbox_inches="tight")
